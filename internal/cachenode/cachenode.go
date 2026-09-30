@@ -28,7 +28,11 @@ type Config struct {
 	StaleWhileRevalidate time.Duration
 	Coalesce             bool
 	FetchTimeout         time.Duration
-	Upstream             upstream.Config
+	// CacheablePrefixes limits caching (and coalescing) to GETs under these
+	// path prefixes. Default "/" means every GET is a candidate; a response is
+	// still only stored if it carries Cache-Control: max-age and no no-store.
+	CacheablePrefixes []string
+	Upstream          upstream.Config
 }
 
 type Server struct {
@@ -62,6 +66,9 @@ func New(cfg Config) *Server {
 	}
 	if cfg.FetchTimeout <= 0 {
 		cfg.FetchTimeout = 2 * time.Second
+	}
+	if len(cfg.CacheablePrefixes) == 0 {
+		cfg.CacheablePrefixes = []string{"/"}
 	}
 	reg := metrics.NewRegistry()
 	s := &Server{cfg: cfg, store: cache.NewStore(cfg.Capacity), up: upstream.New(cfg.Upstream), reg: reg}
@@ -156,8 +163,22 @@ func (s *Server) Close() {
 	s.up.CloseIdle()
 }
 
-func cacheable(r *http.Request) bool {
-	return r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/wiki/")
+// cacheable reports whether a request may be answered from, or coalesced into,
+// a shared cached copy. Requests carrying credentials never are: a response to
+// one user's Authorization or Cookie header must not be handed to another.
+func (s *Server) cacheable(r *http.Request) bool {
+	if r.Method != http.MethodGet || r.Header.Get("Authorization") != "" || r.Header.Get("Cookie") != "" {
+		return false
+	}
+	if strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
+		return false
+	}
+	for _, p := range s.cfg.CacheablePrefixes {
+		if strings.HasPrefix(r.URL.Path, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -177,11 +198,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := s.requestContext(r)
 	defer cancel()
 	fwd := http.Header{}
-	if v := r.Header.Get("X-Client-ID"); v != "" {
-		fwd.Set("X-Client-ID", v)
+	for _, h := range []string{"X-Client-ID", "Authorization", "Cookie", "Accept", "Accept-Language"} {
+		if v := r.Header.Get(h); v != "" {
+			fwd.Set(h, v)
+		}
 	}
 
-	if !cacheable(r) {
+	if !s.cacheable(r) {
 		s.Pass.Inc()
 		resp, err := s.up.Get(ctx, r.URL.RequestURI(), fwd)
 		s.writeUpstream(w, resp, err, "PASS")

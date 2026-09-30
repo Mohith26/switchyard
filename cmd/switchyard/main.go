@@ -214,8 +214,9 @@ func runCache(args []string) error {
 	attempts := fs.Int("attempts", 3, "max attempts per request, including the first")
 	useBreaker := fs.Bool("breaker", true, "per-origin circuit breakers")
 	attemptTimeout := fs.Duration("attempt-timeout", 300*time.Millisecond, "timeout per upstream attempt")
+	prefixes := fs.String("cacheable", "/", "comma-separated path prefixes eligible for caching and coalescing")
 	fs.Parse(args)
-	cfg := cachenode.Config{Name: *name, Capacity: *capacity, Coalesce: *coalesce, StaleWhileRevalidate: *swr,
+	cfg := cachenode.Config{Name: *name, Capacity: *capacity, Coalesce: *coalesce, StaleWhileRevalidate: *swr, CacheablePrefixes: splitList(*prefixes),
 		Upstream: upstream.Config{Endpoints: splitList(*origins), Balancer: *bal, AttemptTimeout: *attemptTimeout,
 			Retry: retry.Config{Mode: retry.Mode(*retryMode), MaxAttempts: *attempts, Ratio: 0.1, MinPerSec: 5,
 				BaseBackoff: 10 * time.Millisecond, MaxBackoff: 100 * time.Millisecond},

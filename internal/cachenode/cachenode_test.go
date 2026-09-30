@@ -19,7 +19,7 @@ func setup(t *testing.T, coalesce bool, swr time.Duration, oc origin.Config) (*S
 	if err := o.Start("127.0.0.1:0"); err != nil {
 		t.Fatal(err)
 	}
-	c := New(Config{Name: "c1", Coalesce: coalesce, StaleWhileRevalidate: swr,
+	c := New(Config{Name: "c1", Coalesce: coalesce, StaleWhileRevalidate: swr, CacheablePrefixes: []string{"/wiki/"},
 		Upstream: upstream.Config{Endpoints: []string{o.Addr()}, AttemptTimeout: 2 * time.Second, Retry: retry.Config{Mode: retry.None}}})
 	if err := c.Start("127.0.0.1:0"); err != nil {
 		t.Fatal(err)

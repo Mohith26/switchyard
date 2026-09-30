@@ -31,6 +31,7 @@ func baseSpec() Spec {
 			TTL: 120 * time.Second, BodyBytes: 2048},
 		Caches: 5,
 		Cache: cachenode.Config{Capacity: 64000, DefaultTTL: 120 * time.Second, FetchTimeout: 2 * time.Second, Coalesce: true,
+			CacheablePrefixes: []string{"/wiki/"},
 			Upstream: upstream.Config{Balancer: "p2c", AttemptTimeout: 300 * time.Millisecond,
 				Retry:      retry.Config{Mode: retry.None, MaxAttempts: 1},
 				Outlier:    upstream.OutlierConfig{Consecutive: 5, Base: time.Second, Max: 10 * time.Second, MaxPercent: 34},

@@ -17,6 +17,8 @@ jobs:
         run: go test -race -count=1 ./...
       - name: benchmarks (smoke)
         run: go test -run '^$' -bench . -benchtime 2000x ./internal/...
+      - name: in front of a plain Python server (real binaries)
+        run: ./examples/front-a-python-server.sh
       - name: lab scenario (shortened)
         run: go run ./cmd/switchyard lab run -scenario node-failure -time-scale 0.3 -rate-scale 0.5 -out /tmp/results
   docker:

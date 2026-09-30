@@ -121,6 +121,26 @@ table.sum td .note{display:block;font-size:11px;color:var(--faint);margin-top:2p
 .delta.worse{background:rgba(255,92,108,.1);color:var(--fail)}
 footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;color:var(--faint);font-size:12.5px;flex-wrap:wrap}
 footer a{color:var(--muted)}
+.demo{display:flex;gap:16px;align-items:center;margin:-8px 0 22px;padding:14px 16px;border:1px solid #3a3320;background:linear-gradient(90deg,rgba(245,184,61,.08),rgba(245,184,61,.02));border-radius:12px}
+.demo .tagd{font:700 10.5px var(--mono);letter-spacing:.12em;color:#1a1204;background:var(--miss);padding:5px 8px;border-radius:5px;white-space:nowrap}
+.demo p{margin:0;font-size:13.5px;line-height:1.55;color:#d8dde4;flex:1}
+.demo p b{color:#fff;font-weight:600}
+.demo .acts{display:flex;gap:8px;flex:none}
+.replaychip{font:700 10px var(--mono);letter-spacing:.1em;color:var(--miss);border:1px solid rgba(245,184,61,.35);padding:4px 7px;border-radius:5px}
+.real{margin-top:40px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#0d1117,#0a0d12);padding:28px 28px 24px}
+.real .k{font:600 10.5px var(--mono);letter-spacing:.1em;color:var(--edge);text-transform:uppercase}
+.real h2{font-size:26px;letter-spacing:-.02em;margin:10px 0 6px;font-weight:700}
+.real .sub{color:var(--muted);font-size:14px;margin:0 0 22px;max-width:820px;line-height:1.55}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.col h3{margin:0 0 10px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:center}
+.col h3 i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.col ul{margin:0;padding-left:18px;color:#c6ccd5;font-size:13px;line-height:1.6}
+.col li{margin:0 0 6px}
+.col code,.real code{font:12px var(--mono);color:#e7eaee;background:#0a0d12;border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+.cmd{margin-top:14px;background:#06080b;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font:12.5px/1.8 var(--mono);color:#cfd5dd;overflow-x:auto;white-space:pre}
+.cmd .c{color:var(--faint)}
+@media (max-width:1150px){.cols{grid-template-columns:1fr}.demo{flex-wrap:wrap}}
 .empty{padding:80px;text-align:center;color:var(--muted);grid-column:1/-1}
 @media (max-width:700px){
   .wrap{padding:20px 16px 48px} header.top{flex-direction:column;align-items:flex-start;gap:14px} .meta{flex-wrap:wrap;justify-content:flex-start} #hostChip{display:none}
@@ -151,6 +171,12 @@ footer a{color:var(--muted)}
     </div>
   </header>
 
+  <div class="demo" id="demoBanner">
+    <span class="tagd" id="demoTag">RECORDED DEMO</span>
+    <p id="demoText"><b>This page is a replay, not the gateway.</b> Every frame comes from runs recorded on a laptop on <span id="demoDate">30 Sep 2026</span>, and nothing on this page is handling traffic right now. The gateway itself is a working Go program: clone it and run the same experiments, or put it in front of your own HTTP server.</p>
+    <div class="acts"><a class="btn primary" href="https://github.com/Mohith26/switchyard" target="_blank" rel="noopener">See the code</a><a class="btn" href="#real">What the repo does</a></div>
+  </div>
+
   <nav class="tabs" id="tabs"></nav>
 
   <section class="intro">
@@ -169,6 +195,7 @@ footer a{color:var(--muted)}
   </div>
 
   <div class="transport">
+    <span class="replaychip" id="replayChip">REPLAY</span>
     <button class="btn" id="playBtn" style="min-width:70px">Pause</button>
     <button class="btn" id="restartBtn">Restart</button>
     <div class="time" id="time">0.0s / 0s</div>
@@ -187,6 +214,39 @@ footer a{color:var(--muted)}
   <section class="results">
     <div class="headline"><div class="k">Measured result</div><p id="headline"></p><div class="watch" id="watch"></div><div class="how" id="how"></div></div>
     <table class="sum" id="summary"></table>
+  </section>
+
+  <section class="real" id="real">
+    <div class="k">The real thing</div>
+    <h2>This page is a replay. The repo is a working gateway.</h2>
+    <p class="sub">The experiments above can't run in a browser tab: they need real processes crashing, real sockets and real signals. So the page plays back recordings, and the code that produced them is on GitHub, where it builds, passes its tests on every push, and runs in front of ordinary HTTP servers.</p>
+    <div class="cols">
+      <div class="col"><h3><i style="background:var(--edge)"></i>What's in the repo</h3><ul>
+        <li>One Go binary with five roles: <code>edge</code>, <code>cache</code>, <code>origin</code>, <code>loadgen</code> and <code>lab</code>. Standard library only, no dependencies.</li>
+        <li>61 tests, including tests that start the real binary as a separate process and send it real SIGHUP and SIGUSR2 signals.</li>
+        <li>CI on every push: the race-detector test suite on Linux, benchmarks, a shortened lab run, and a Docker Compose stack that has to serve a cache miss, then a hit, then survive a hot reload.</li>
+      </ul></div>
+      <div class="col"><h3><i style="background:var(--with)"></i>Where it works</h3><ul>
+        <li>Linux and macOS, with Go 1.23+ or Docker. Tested on Apple Silicon macOS and on Ubuntu x86-64 in CI.</li>
+        <li>In front of any plain-HTTP server. It caches GET responses that send <code>Cache-Control: max-age</code>, passes everything else straight through, and never shares a cached response between requests that carry cookies or an Authorization header.</li>
+        <li>That is checked two ways: a test against a server that knows nothing about Switchyard, and <code>examples/front-a-python-server.sh</code>, which fronts a ten-line Python server and restarts the edge during 400 requests without dropping any of them.</li>
+        <li><code>lab run</code> re-records every number on this page in about seven minutes.</li>
+      </ul></div>
+      <div class="col"><h3><i style="background:var(--fail)"></i>Where it doesn't</h3><ul>
+        <li>It is not a production CDN. There is no HTTPS: no TLS termination and no TLS to the origin. It speaks HTTP/1.1 only, with no HTTP/2 or QUIC.</li>
+        <li>There is one edge instance, so rate limits and concurrency limits are per process, not shared across a fleet.</li>
+        <li>The cache is in memory and sized by entry count. It starts empty after a restart.</li>
+        <li>Windows is not supported, because restarts rely on Unix signals and file-descriptor passing.</li>
+        <li>These numbers were measured on one machine over loopback. They show how much each mechanism changes the outcome, not internet-scale throughput.</li>
+      </ul></div>
+    </div>
+    <div class="cmd"><span class="c"># the lab and this dashboard, with a Run live button</span>
+git clone https://github.com/Mohith26/switchyard &amp;&amp; cd switchyard
+go run ./cmd/switchyard lab serve
+<span class="c"># the whole topology: 3 origins, 3 cache nodes, 1 edge on :8080</span>
+docker compose up --build
+<span class="c"># in front of a server that isn't Switchyard's</span>
+./examples/front-a-python-server.sh</div>
   </section>
 
   <footer>
@@ -353,6 +413,8 @@ function renderText(r){
   const d = new Date(r.recorded);
   $("#modeChip").innerHTML = r.live ? "<b>LIVE</b> running on this machine" : `recorded run · <b>${d.toISOString().slice(0,10)}</b>`;
   $("#modeChip").classList.toggle("live", !!r.live);
+  $("#replayChip").textContent = r.live ? "LIVE" : "REPLAY";
+  if ($("#demoDate")) $("#demoDate").textContent = d.toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
   $("#hostChip").hidden=false; $("#hostChip").innerHTML = `<b>${r.host}</b>`;
   $("#how").innerHTML = `Reproduce: <code>go run ./cmd/switchyard lab run -scenario ${r.id}</code><br>Topology: ${r.topology.caches} cache nodes, ${r.topology.origins} origins x ${r.topology.origin_workers} workers${r.topology.edge_process?", edge running as a separate OS process":""}. Every hop is a real HTTP connection over loopback.`;
   $("#footRight").textContent = `${r.id} · ${r.duration}s per variant · 100ms resolution`;
@@ -654,6 +716,11 @@ window.addEventListener("hashchange", ()=>{ const id=location.hash.slice(1); if 
 
 (async ()=>{
   const home = document.documentElement.dataset.home;
+  if (MODE !== "static" && !EMBED){
+    $("#demoTag").textContent = "LOCAL LAB";
+    $("#demoText").innerHTML = "<b>You're running the lab on this machine.</b> Tabs replay the recordings in <code>results/</code>. Press <b>Run live</b> to run a scenario for real, right now, on real sockets.";
+    $("#replayChip").textContent = "REPLAY OR LIVE";
+  }
   if (home){ const a=$("#homeLink"); a.hidden=false; a.href=home; }
   try {
     await loadIndex();

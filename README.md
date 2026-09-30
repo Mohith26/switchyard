@@ -8,7 +8,7 @@ Switchyard is a three-tier request path (**edge proxy → cache tier → origin 
 
 I built it to understand these mechanisms by watching a system fail without them, so every one of them can be switched off. The lab builds the whole topology on real sockets, replays real Wikipedia traffic through it, injects a failure, and records what every tier did at 100ms resolution. **Every scenario runs twice on identical traffic: once with one mechanism turned off, once with it on.** Each result below is a measured A/B comparison, and the dashboard replays both runs side by side.
 
-**[Open the dashboard](https://mohithgajjela.com/system-02-switchyard)** (recorded runs, also mirrored on [GitHub Pages](https://mohith26.github.io/switchyard/)), or run it locally with a *Run live* button:
+**[Open the dashboard](https://mohithgajjela.com/system-02-switchyard)**, also mirrored on [GitHub Pages](https://mohith26.github.io/switchyard/). That page is a **recorded demo**: it replays runs recorded on my laptop and does not run the gateway. The gateway is this repository, and you can run the same dashboard locally with a *Run live* button:
 
 ```sh
 go run ./cmd/switchyard lab serve     # http://127.0.0.1:8088
@@ -177,6 +177,21 @@ docker compose --profile load run --rm loadgen
 docker compose kill -s HUP edge
 ```
 
+## Where it works, and where it doesn't
+
+**Works:**
+- **Platforms:** Linux and macOS, with Go 1.23+ or Docker. Tested on Apple Silicon macOS locally and on Ubuntu x86-64 in CI. Windows is not supported, because restarts use Unix signals and file-descriptor passing.
+- **In front of any plain-HTTP server.** The cache node caches GET responses that send `Cache-Control: max-age` and passes everything else through. It never shares a cached response between requests that carry `Cookie` or `Authorization`. Use `-cacheable /static/,/assets/` to limit caching and coalescing to specific path prefixes.
+  - `TestFrontsAGenericHTTPBackend` checks this against a server that knows nothing about Switchyard.
+  - `examples/front-a-python-server.sh` does the same with the real binaries in front of a ten-line Python server. It covers MISS then HIT, no caching without Cache-Control, failover when the owning cache node is killed, and a zero-downtime restart during 400 requests with all 400 returning 200.
+- **Deployment:** as separate processes (one binary per role) or as the Docker Compose stack.
+
+**Does not work, or is out of scope:**
+- **No HTTPS.** There is no TLS termination and no TLS to the origin. It speaks HTTP/1.1 only, with no HTTP/2 or QUIC.
+- **One edge instance.** Rate limits and concurrency limits are per process, not global.
+- **Simple cache.** It lives in memory, is sized by entry count, and starts empty after a restart.
+- **It is not a production CDN.** It is a from-scratch implementation of the mechanisms one depends on, built to measure them.
+
 ## How the lab measures
 
 - **Real sockets.** Every hop is a real HTTP/1.1 connection over loopback. In the deploy scenario the edge is a separate OS process running the real binary, restarted with real signals.
@@ -198,7 +213,7 @@ docker compose kill -s HUP edge
 ## Tests and benchmarks
 
 ```sh
-go test -race ./...        # 60 tests, including process-level integration tests
+go test -race ./...        # 61 tests, including process-level integration tests
 go test -short ./...       # skips the tests that build the binary and spawn processes
 go test -run '^$' -bench . -benchmem ./internal/...
 ```

@@ -228,3 +228,66 @@ func BenchmarkEdgeCacheHit(b *testing.B) {
 		}
 	})
 }
+
+// TestFrontsAGenericHTTPBackend puts the edge and a cache node in front of a
+// plain HTTP server that knows nothing about Switchyard, the way you would put
+// it in front of an existing service.
+func TestFrontsAGenericHTTPBackend(t *testing.T) {
+	var hits sync.Map
+	count := func(p string) int64 {
+		v, _ := hits.LoadOrStore(p, new(atomic.Int64))
+		return v.(*atomic.Int64).Load()
+	}
+	backend := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		v, _ := hits.LoadOrStore(r.URL.Path, new(atomic.Int64))
+		v.(*atomic.Int64).Add(1)
+		switch {
+		case r.URL.Path == "/healthz":
+		case len(r.URL.Path) > 8 && r.URL.Path[:8] == "/static/":
+			w.Header().Set("Cache-Control", "public, max-age=60")
+			w.Write([]byte("asset"))
+		default:
+			w.Write([]byte(`{"user":"` + r.Header.Get("Authorization") + `"}`)) // no caching headers
+		}
+	})}
+	bl, _ := net.Listen("tcp", "127.0.0.1:0")
+	go backend.Serve(bl)
+	defer backend.Close()
+
+	c := cachenode.New(cachenode.Config{Name: "c", Coalesce: true,
+		Upstream: upstream.Config{Endpoints: []string{bl.Addr().String()}, AttemptTimeout: time.Second, Retry: retry.Config{Mode: retry.None}}})
+	if err := c.Start("127.0.0.1:0"); err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	e, err := New(Config{CacheNodes: []string{c.Addr()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	el, _ := net.Listen("tcp", "127.0.0.1:0")
+	hs := &http.Server{Handler: e}
+	go hs.Serve(el)
+	defer hs.Close()
+	base := "http://" + el.Addr().String()
+
+	for i, want := range []string{"MISS", "HIT", "HIT"} {
+		_, h, err := fetch(base+"/static/app.js", nil)
+		if err != nil || h.Get("X-Cache") != want {
+			t.Fatalf("static request %d: X-Cache=%q err=%v, want %s", i, h.Get("X-Cache"), err, want)
+		}
+	}
+	if n := count("/static/app.js"); n != 1 {
+		t.Fatalf("backend saw the cacheable asset %d times, want 1", n)
+	}
+	for i := 0; i < 3; i++ {
+		fetch(base+"/api/me", nil)
+	}
+	if n := count("/api/me"); n != 3 {
+		t.Fatalf("a response without Cache-Control must never be cached; backend saw %d of 3", n)
+	}
+	// Credentialed requests bypass the shared cache entirely.
+	_, h, _ := fetch(base+"/static/app.js", map[string]string{"Authorization": "Bearer x"})
+	if h.Get("X-Cache") != "PASS" || count("/static/app.js") != 2 {
+		t.Fatalf("credentialed request: X-Cache=%q; must go straight to the backend", h.Get("X-Cache"))
+	}
+}
