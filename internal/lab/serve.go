@@ -215,6 +215,66 @@ func commas(v float64) string {
 	return s
 }
 
+// SingleOptions configure ExportSingle.
+type SingleOptions struct {
+	FontCSS string // optional @font-face CSS to inline in place of the web-font links
+	Home    string // optional URL for a "back to" link in the header
+}
+
+// ExportSingle writes the dashboard and every recorded result as one
+// self-contained HTML file with no runtime network requests (other than the
+// fonts, unless FontCSS is given). This is what gets hosted on a static site.
+func ExportSingle(dir, out string, o SingleOptions) error {
+	b, err := os.ReadFile(filepath.Join(dir, "index.json"))
+	if err != nil {
+		return err
+	}
+	var idx []IndexEntry
+	if err := json.Unmarshal(b, &idx); err != nil {
+		return err
+	}
+	results := map[string]json.RawMessage{}
+	for _, e := range idx {
+		rb, err := os.ReadFile(filepath.Join(dir, e.File))
+		if err != nil {
+			return err
+		}
+		results[e.ID] = rb
+	}
+	blob, err := json.Marshal(map[string]any{"index": idx, "results": results}) // escapes <, > and &
+	if err != nil {
+		return err
+	}
+	page, err := webFS.ReadFile("web/index.html")
+	if err != nil {
+		return err
+	}
+	h := strings.Replace(string(page), `data-mode="auto"`, `data-mode="static"`, 1)
+	if o.Home != "" {
+		h = strings.Replace(h, `data-mode="static"`, `data-mode="static" data-home="`+o.Home+`"`, 1)
+	}
+	if o.FontCSS != "" {
+		css, err := os.ReadFile(o.FontCSS)
+		if err != nil {
+			return err
+		}
+		var kept []string
+		for _, line := range strings.Split(h, "\n") {
+			if strings.Contains(line, "fonts.googleapis.com") || strings.Contains(line, "fonts.gstatic.com") {
+				continue
+			}
+			kept = append(kept, line)
+		}
+		h = strings.Join(kept, "\n")
+		h = strings.Replace(h, "<style>", "<style>\n"+string(css), 1)
+	}
+	h = strings.Replace(h, "<script>\n(() => {", `<script id="sy-data" type="application/json">`+string(blob)+"</script>\n<script>\n(() => {", 1)
+	if !strings.Contains(h, `id="sy-data"`) {
+		return errors.New("export: could not find the dashboard script to embed data before")
+	}
+	return os.WriteFile(out, []byte(h), 0o644)
+}
+
 // Export writes a static, replay-only copy of the dashboard and results.
 func Export(dir, out string) error {
 	if _, err := os.Stat(filepath.Join(dir, "index.json")); err != nil {

@@ -372,7 +372,13 @@ func runLab(args []string) error {
 		fs := flag.NewFlagSet("lab export", flag.ExitOnError)
 		results := fs.String("results", "results", "directory of recorded results")
 		out := fs.String("out", "docs", "output directory for the static replay site")
+		single := fs.String("single", "", "instead, write one self-contained HTML file here")
+		fonts := fs.String("fonts", "", "with -single: @font-face CSS to inline instead of loading web fonts")
+		home := fs.String("home", "", "with -single: URL for a back link in the header")
 		fs.Parse(args[1:])
+		if *single != "" {
+			return lab.ExportSingle(*results, *single, lab.SingleOptions{FontCSS: *fonts, Home: *home})
+		}
 		return lab.Export(*results, *out)
 	default:
 		fmt.Fprintln(os.Stderr, `usage: switchyard lab <list|run|serve|export> [flags]

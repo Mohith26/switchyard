@@ -146,8 +146,8 @@ func nodeFailure(sec func(float64) time.Duration) *Scenario {
 			{Label: "p99 latency, first 5s after the crash", Without: w.Quantile("without", k, k+5, 0.99), With: w.Quantile("with", k, k+5, 0.99), Unit: "ms", Better: "lower"},
 			{Label: "Failed requests after the crash", Without: failed("without"), With: failed("with"), Unit: "req", Better: "lower"},
 		}
-		r.Headline = fmt.Sprintf("The ring reassigned %.1f%% of keys vs %.1f%% for mod-N, cutting extra origin fetches from %.0f to %.0f.",
-			moved(1), moved(0), extra("without"), extra("with"))
+		r.Headline = fmt.Sprintf("The ring reassigned %.1f%% of keys vs %.1f%% for mod-N, cutting extra origin fetches from %s to %s.",
+			moved(1), moved(0), commas(math.Round(extra("without"))), commas(math.Round(extra("with"))))
 	}
 	return sc
 }
@@ -429,8 +429,8 @@ func overload(sec func(float64) time.Duration) *Scenario {
 			{Label: "Requests refused fast", Without: fastFail("without"), With: fastFail("with"), Unit: "req", Better: "", Note: "the 'with' side trades these for goodput"},
 			{Label: "Origin work thrown away", Without: wasted("without"), With: wasted("with"), Unit: "req", Better: "lower"},
 		}
-		r.Headline = fmt.Sprintf("At 2x capacity, goodput was %.0f req/s with the adaptive limit (p99 %.0fms) vs %.0f req/s without, %s.",
-			good("with"), r.Summary[1].With, good("without"), latencyPhrase(r.Summary[1].Without))
+		r.Headline = fmt.Sprintf("At 2x capacity, goodput was %s req/s with the adaptive limit (p99 %.0fms) vs %s req/s without, %s.",
+			commas(good("with")), r.Summary[1].With, commas(good("without")), latencyPhrase(r.Summary[1].Without))
 	}
 	return sc
 }

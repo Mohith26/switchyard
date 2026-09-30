@@ -27,6 +27,9 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .brand{display:flex;gap:14px;align-items:center}
 .mark{width:40px;height:40px;border-radius:10px;background:linear-gradient(145deg,#111823,#0b0f15);border:1px solid var(--line2);display:grid;place-items:center;flex:none}
 .brand h1{font-size:22px;letter-spacing:-.02em;margin:0;font-weight:700}
+.home{font:500 12px var(--mono);color:var(--muted);text-decoration:none;display:inline-flex;gap:6px;align-items:center;margin-bottom:18px}
+.home:hover{color:var(--text)}
+[hidden]{display:none!important}
 .brand p{margin:3px 0 0;color:var(--muted);font-size:13.5px;max-width:620px}
 .meta{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex:none}
 .chip{font:500 12px var(--mono);color:var(--muted);border:1px solid var(--line2);background:var(--panel);padding:6px 10px;border-radius:999px;white-space:nowrap}
@@ -39,12 +42,13 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:2
 .btn.primary:hover{filter:brightness(1.07)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 nav.tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:22px}
-.tab{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;color:var(--text);font-family:var(--sans);transition:border-color .15s,background .15s}
+.tab{min-width:0;display:flex;flex-direction:column;justify-content:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;color:var(--text);font-family:var(--sans);transition:border-color .15s,background .15s}
 .tab:hover{border-color:var(--line2);background:#10141b}
 .tab.on{border-color:#2f3a49;background:linear-gradient(180deg,#141a24,#10141b);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
-.tab .k{font:600 10px/1.45 var(--mono);letter-spacing:.06em;color:var(--faint);text-transform:uppercase;min-height:29px}
+.tab .k{font:600 10.5px var(--mono);letter-spacing:.06em;color:var(--faint)}
+.tab .m{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tab.on .k{color:var(--with)}
-.tab .t{font-size:13.5px;font-weight:600;margin-top:5px;line-height:1.25}
+.tab .t{font-size:14px;font-weight:600;margin-top:6px;line-height:1.25}
 .intro{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px;margin-bottom:20px;align-items:start}
 .intro h2{font-size:28px;letter-spacing:-.025em;line-height:1.15;margin:0 0 10px;font-weight:700}
 .intro .q{font-size:16px;color:#cfd5dd;line-height:1.5;margin:0}
@@ -61,9 +65,9 @@ nav.tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;marg
 .settings span{font:11px var(--mono);color:var(--muted);background:#0a0d12;border:1px solid var(--line);padding:3px 7px;border-radius:5px}
 .viz{position:relative;height:340px}
 .viz canvas.topo{position:absolute;inset:0;width:100%;height:100%}
-.ringbox{position:absolute;left:14px;bottom:10px;width:118px;height:118px;pointer-events:none}
+.ringbox{position:absolute;left:14px;top:40px;width:118px;height:118px;pointer-events:none}
 .ringbox canvas{width:118px;height:118px}
-.ringcap{position:absolute;left:140px;bottom:14px;width:118px;text-align:left;font:500 10.5px/1.5 var(--mono);color:var(--faint)}
+.ringcap{position:absolute;left:140px;top:58px;width:124px;text-align:left;font:500 10.5px/1.5 var(--mono);color:var(--faint)}
 .ringcap b{color:var(--muted);font-weight:600}
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
 .tile{padding:12px 16px 14px;border-right:1px solid var(--line)}
@@ -93,10 +97,16 @@ nav.tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;marg
 .legend{display:flex;gap:18px;margin:12px 2px 0;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
 .results{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px;margin-top:22px}
-.headline{background:linear-gradient(160deg,#0f1a15,#0d1117 60%);border:1px solid #1d3a2c;border-radius:16px;padding:22px 24px}
+.headline{background:linear-gradient(160deg,#0f1a15,#0d1117 60%);border:1px solid #1d3a2c;border-radius:16px;padding:22px 24px;display:flex;flex-direction:column}
 .headline .k{font:600 10.5px var(--mono);letter-spacing:.1em;color:var(--with);text-transform:uppercase}
 .headline p{font-size:19px;line-height:1.45;margin:10px 0 0;letter-spacing:-.01em;font-weight:500}
-.headline .how{margin-top:16px;font:12px/1.65 var(--mono);color:var(--faint)}
+.headline .how{margin-top:auto;padding-top:18px;font:12px/1.65 var(--mono);color:var(--faint)}
+.watch{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+.watch .wk{font:600 10.5px var(--mono);letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+.watch button{all:unset;cursor:pointer;display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:baseline;font-size:13.5px;line-height:1.5;color:#cfd5dd;padding:6px 8px;margin:0 -8px;border-radius:8px;transition:background .15s}
+.watch button:hover{background:rgba(255,255,255,.04)}
+.watch button b{font:600 12px var(--mono);color:var(--with)}
+.watch button.now{background:rgba(61,220,151,.07)}
 .headline .how code{color:var(--muted)}
 table.sum{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
 table.sum th{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:right;padding:12px 16px;border-bottom:1px solid var(--line)}
@@ -112,11 +122,19 @@ table.sum td .note{display:block;font-size:11px;color:var(--faint);margin-top:2p
 footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;color:var(--faint);font-size:12.5px;flex-wrap:wrap}
 footer a{color:var(--muted)}
 .empty{padding:80px;text-align:center;color:var(--muted);grid-column:1/-1}
+@media (max-width:700px){
+  .wrap{padding:20px 16px 48px} header.top{flex-direction:column;align-items:flex-start;gap:14px} .meta{flex-wrap:wrap;justify-content:flex-start} #hostChip{display:none}
+  nav.tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important} .intro h2{font-size:23px}
+  .viz{height:300px} .tiles{grid-template-columns:repeat(2,1fr)} .tile:nth-child(2){border-right:0} .tile:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .transport{flex-wrap:wrap} .scrub{order:5;flex-basis:100%} .transport .evlabel{min-width:0;flex:1} .settings span{font-size:10px}
+  table.sum td,table.sum th{padding:9px 10px} .headline p{font-size:17px}
+}
 @media (max-width:1150px){nav.tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.intro,.results{grid-template-columns:1fr}.stage{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <a class="home" id="homeLink" hidden href="/">&larr; mohithgajjela.com</a>
   <header class="top">
     <div class="brand">
       <div class="mark"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 23h24M4 23c9 0 13-13 24-13" stroke="#3ddc97" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="4" cy="23" r="2.6" fill="#6cb6ff"/></svg></div>
@@ -167,7 +185,7 @@ footer a{color:var(--muted)}
   </div>
 
   <section class="results">
-    <div class="headline"><div class="k">Measured result</div><p id="headline"></p><div class="how" id="how"></div></div>
+    <div class="headline"><div class="k">Measured result</div><p id="headline"></p><div class="watch" id="watch"></div><div class="how" id="how"></div></div>
     <table class="sum" id="summary"></table>
   </section>
 
@@ -185,6 +203,30 @@ const MODE = document.documentElement.dataset.mode;
 const NODE_COLORS = ["#6cb6ff","#b48cff","#ff7ac6","#f5b83d","#3ddc97","#5ee1e6"];
 const COLOR = {hit:"#3ddc97", miss:"#f5b83d", fail:"#ff5c6c", shed:"#a58bff", without:"#ff7a66", with:"#3ddc97"};
 const TICK = 0.1;
+const SHORT = {"node-failure":"Consistent hashing","flash-crowd":"Request coalescing","retry-storm":"Retry budget + circuit breaker",
+  "overload":"Adaptive concurrency limit","noisy-neighbor":"Per-client rate limiting","deploy":"Zero-downtime socket handoff"};
+const CACHEABLE = {"node-failure":1,"flash-crowd":1,"deploy":1};
+// What to look at, and when. Clicking a line seeks the replay there.
+const WATCH = {
+  "node-failure":[[7.5,"All five nodes are warm and nearly every request is a cache hit (green)."],
+    [8,"cache-3 crashes. On the left most of the key ring changes color; on the right only cache-3's slice does."],
+    [8.6,"The misses land on the origin: watch the amber stream and the load chart. mod-N's spike is about 4x taller and takes longer to drain."]],
+  "flash-crowd":[[8,"The viral page arrives at 2,500 req/s and it can only be cached for one second."],
+    [9,"Left: every expiry turns into a burst of slow renders, so the origin queue and the hot page's latency climb. Right: one render a second, everything else served from cache."],
+    [22,"The spike ends."]],
+  "retry-storm":[[8,"The origin gets 4x slower. Both sides start failing (red)."],
+    [9,"Right: circuit breakers open (purple OPEN badges) and stop feeding the queue. Left: each timeout comes back as three more requests."],
+    [14,"The origin is healthy again. The right side recovers within a second. The left stays red for the rest of the run: its queues are full of retries nobody is waiting for."]],
+  "overload":[[5,"Offered load starts ramping toward 2x what the origin can serve."],
+    [12,"Left: everything queues, waits longer than the 1s timeout, and almost nothing is served in time. Right: the edge caps in-flight requests and turns the excess away instantly (purple), so what it admits stays fast."],
+    [24,"Load drops back down."]],
+  "noisy-neighbor":[[8,"Client 9 starts sending 4,000 req/s."],
+    [9,"Left: the origin is swamped and every client's requests time out together. Right: the flood is rejected at the edge (purple) and the other eight clients never notice."],
+    [22,"The flood stops."]],
+  "deploy":[[5,"Each blue marker is a deploy of the edge process."],
+    [5.1,"Left: every restart refuses connections for a moment (red at the edge). Right: the new PID takes over the open socket and nothing is dropped."],
+    [25,"Five deploys later: six PIDs have served traffic on each side."]],
+};
 const EDGE_NOTE = {
   "node-failure":{without:"mod-N placement", with:"ring placement"},
   "flash-crowd":{without:"ring placement", with:"ring placement"},
@@ -211,6 +253,7 @@ function delta(m){
   if (!m.better) return same("tradeoff");
   if (m.unit==="s"){ if (a<0 && b>=0) return good("recovered"); if (b<0 && a>=0) return bad("never recovered"); }
   if (m.unit==="ms" && (a<0||b<0)){ return a<0 ? good("now served") : bad("none served"); }
+  if (m.unit==="%" && m.better==="lower" && a>0 && b>0 && a/b>=1.5) return good(`${fmtN(a/b, a/b<10?1:0)}x fewer`);
   if (m.unit==="%"){
     const pts = b-a, g = m.better==="higher" ? pts>0 : pts<0;
     if (Math.abs(pts)<0.05) return same();
@@ -230,20 +273,23 @@ function delta(m){
 }
 
 // ---------- data ----------
+const EMBED = (()=>{ const el=document.getElementById("sy-data"); return el ? JSON.parse(el.textContent) : null; })();
 async function loadIndex(){
+  if (EMBED){ state.index = EMBED.index; return; }
   const r = await fetch("results/index.json", {cache:"no-store"});
   if (!r.ok) throw new Error("No recorded results yet. Run: go run ./cmd/switchyard lab run");
   state.index = await r.json();
 }
 async function loadResult(id){
   if (state.cache[id]) return state.cache[id];
+  if (EMBED) return (state.cache[id] = EMBED.results[id]);
   const e = state.index.find(x=>x.id===id);
   const j = await (await fetch("results/"+e.file, {cache:"no-store"})).json();
   state.cache[id] = j;
   return j;
 }
 async function probeLive(){
-  if (MODE==="static") return false;
+  if (MODE==="static" || EMBED) return false;
   try { const r = await fetch("api/ping",{cache:"no-store"}); return r.ok && (await r.json()).live===true; } catch { return false; }
 }
 
@@ -293,7 +339,7 @@ const CHARTS = {
 
 // ---------- text ----------
 function renderTabs(){
-  $("#tabs").innerHTML = state.index.map((e,i)=>`<button class="tab" data-id="${e.id}"><div class="k">0${i+1} · ${e.mechanism}</div><div class="t">${e.title}</div></button>`).join("");
+  $("#tabs").innerHTML = state.index.map((e,i)=>`<button class="tab" data-id="${e.id}" title="${e.mechanism}"><div class="k">0${i+1}</div><div class="t">${e.title}</div><div class="m">${SHORT[e.id]||e.mechanism}</div></button>`).join("");
   document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>select(b.dataset.id));
 }
 function markTab(id){ document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.id===id)); }
@@ -310,6 +356,16 @@ function renderText(r){
   $("#hostChip").hidden=false; $("#hostChip").innerHTML = `<b>${r.host}</b>`;
   $("#how").innerHTML = `Reproduce: <code>go run ./cmd/switchyard lab run -scenario ${r.id}</code><br>Topology: ${r.topology.caches} cache nodes, ${r.topology.origins} origins x ${r.topology.origin_workers} workers${r.topology.edge_process?", edge running as a separate OS process":""}. Every hop is a real HTTP connection over loopback.`;
   $("#footRight").textContent = `${r.id} · ${r.duration}s per variant · 100ms resolution`;
+}
+function renderWatch(r){
+  const items = WATCH[r.id]||[];
+  $("#watch").innerHTML = items.length ? `<div class="wk">What to watch</div>` + items.map(([t,txt])=>`<button data-t="${t}"><b>${t.toFixed(1)}s</b><span>${txt}</span></button>`).join("") : "";
+  document.querySelectorAll("#watch button").forEach(b=>b.onclick=()=>{ if (state.live) return; state.t=Math.max(0,+b.dataset.t-0.6); clearParts(); state.playing=true; $("#playBtn").textContent="Pause"; });
+}
+function markWatch(){
+  const bs=[...document.querySelectorAll("#watch button")]; let cur=null;
+  for (const b of bs) if (+b.dataset.t<=state.t+0.05) cur=b;
+  bs.forEach(b=>b.classList.toggle("now", b===cur));
 }
 function renderSummary(r){
   $("#headline").textContent = r.headline || (r.live ? "Running live on this machine. The comparison table fills in when both variants finish." : "");
@@ -345,7 +401,7 @@ function layout(w,h,r){
   const top=34, bot=h-(ring?16:20), m=14;
   const gap = (w - 2*m - BOX.client - BOX.edge - BOX.cache - BOX.origin)/3;
   const x0 = m + BOX.client/2, x1 = x0 + BOX.client/2 + gap + BOX.edge/2, x2 = x1 + BOX.edge/2 + gap + BOX.cache/2, x3 = x2 + BOX.cache/2 + gap + BOX.origin/2;
-  const midY = ring ? top + (bot-top)*0.36 : (top+bot)/2;
+  const midY = ring ? top + (bot-top)*0.68 : (top+bot)/2;
   const caches=[...Array(nC)].map((_,i)=>({x:x2, y: top + (bot-top)*(i+0.5)/nC, w:BOX.cache}));
   const origins=[...Array(nO)].map((_,i)=>({x:x3, y: top + (bot-top)*(i+0.5)/nO, w:BOX.origin}));
   return {client:{x:x0,y:midY,w:BOX.client}, edge:{x:x1,y:midY,w:BOX.edge}, caches, origins, top, bot};
@@ -377,7 +433,9 @@ function spawn(r, v, dt){
 }
 
 function drawTopo(r, v, card, dt){
-  const c = card.querySelector("canvas.topo"); const [g,w,h]=sizeCanvas(c);
+  const c = card.querySelector("canvas.topo"); let [g,w,h]=sizeCanvas(c);
+  const MINW = 600;
+  if (w < MINW){ const k=w/MINW, dpr=window.devicePixelRatio||1; g.setTransform(dpr*k,0,0,dpr*k,0,0); w=MINW; h=h/k; }
   g.clearRect(0,0,w,h);
   const L = layout(w,h,r), tk = tickAt(v, state.t);
   link(g,R_(L.client),L_(L.edge),.35);
@@ -407,12 +465,12 @@ function drawTopo(r, v, card, dt){
         pos={x:base.x-Math.cos(ang)*q*34, y:base.y+Math.sin(ang)*q*34}; col=COLOR.fail; a=1-q*q;
       } else { P.splice(i,1); continue; }
     } else {
-      if (s<1){ pos=bez(R_(L.client),L_(L.edge),s); col="#8f9bb0"; a=.22; }
+      if (s<1){ pos=bez(R_(L.client),L_(L.edge),s); col="#8f9bb0"; a=.16; }
       else if (s<2){ pos=bez(R_(L.edge),L_(cn),s-1); col = p.toOrigin? COLOR.miss : COLOR.hit; }
       else if (p.toOrigin && s<3){ pos=bez(R_(cn),L_(og),s-2); col=COLOR.miss; }
       else { P.splice(i,1); continue; }
     }
-    const jy = s<1 ? p.j*2.4*Math.sin(Math.PI*s) : (p.k==="fail"&&s>=1?0:p.j*Math.sin(Math.PI*Math.min(1,s%1)));
+    const jy = s<1 ? p.j*0.8*Math.sin(Math.PI*s) : (p.k==="fail"&&s>=1?0:p.j*Math.sin(Math.PI*Math.min(1,s%1)));
     g.fillStyle=col; g.globalAlpha=Math.max(0,a); g.beginPath(); g.arc(pos.x, pos.y+jy, col===COLOR.fail?2.8:2.3, 0, Math.PI*2); g.fill();
   }
   g.globalAlpha=1; g.globalCompositeOperation="source-over";
@@ -441,7 +499,10 @@ function drawTopo(r, v, card, dt){
     g.fillStyle=NODE_COLORS[i%NODE_COLORS.length]; g.globalAlpha=nt.up?1:.35; g.beginPath(); g.arc(cn.x-cw/2+11, cn.y-ch/2+12, 3.5,0,Math.PI*2); g.fill(); g.globalAlpha=1;
     g.textAlign="left"; g.fillStyle=nt.up?"#cfd5dd":"#ff5c6c"; g.font="600 11px 'JetBrains Mono', monospace"; g.fillText(`cache-${i+1}`, cn.x-cw/2+20, cn.y-ch/2+16);
     g.textAlign="right"; g.fillStyle=!nt.up?"#ff5c6c":nt.out?"#f5b83d":"#8b94a3"; g.font="10.5px 'JetBrains Mono', monospace"; g.fillText(!nt.up? "DOWN" : nt.out ? "EJECTED" : fmtK(nt.req*10)+"/s", cn.x+cw/2-8, cn.y-ch/2+16);
-    if (ch>36){ const fr=Math.min(1,(nt.entries||0)/2400); g.fillStyle="#1a212b"; g.fillRect(cn.x-cw/2+10, cn.y+ch/2-12, cw-20, 4); g.fillStyle=nt.up?"#2f7f5f":"#4a1d24"; g.fillRect(cn.x-cw/2+10, cn.y+ch/2-12, (cw-20)*fr, 4); }
+    if (ch>36 && CACHEABLE[r.id]){
+      g.textAlign="left"; g.fillStyle="#4d5563"; g.font="9.5px 'JetBrains Mono', monospace";
+      g.fillText(nt.up ? `${fmtK(nt.entries||0)} cached` : "cache lost", cn.x-cw/2+10, cn.y+ch/2-9);
+    }
   });
   // origins
   const oh = Math.min(82,(L.bot-L.top)/L.origins.length-12), ow=BOX.origin, W=r.topology.origin_workers||16;
@@ -563,7 +624,7 @@ function frame(ts){
       if (moving) spawn(r,v,dt);
       drawTopo(r,v,card,dt); drawRing(r,v,card); updateTiles(r,v,card);
     });
-    drawCharts(r); updateTransport(r);
+    drawCharts(r); updateTransport(r); markWatch();
   }
   requestAnimationFrame(frame);
 }
@@ -573,7 +634,7 @@ async function select(id){
   markTab(id);
   const r = await loadResult(id);
   state.cur = r; state.t=0;
-  renderText(r); renderStage(r); renderCharts(r); renderTransport(r); renderSummary(r);
+  renderText(r); renderStage(r); renderCharts(r); renderTransport(r); renderSummary(r); renderWatch(r);
   history.replaceState(null,"","#"+id);
   $("#liveBtn").hidden = !state.liveAvail; $("#liveBtn").disabled=false; $("#liveBtn").textContent="Run live";
 }
@@ -592,6 +653,8 @@ $("#liveBtn").onclick=runLive;
 window.addEventListener("hashchange", ()=>{ const id=location.hash.slice(1); if (state.index.some(e=>e.id===id) && (!state.cur || state.cur.id!==id)) select(id); });
 
 (async ()=>{
+  const home = document.documentElement.dataset.home;
+  if (home){ const a=$("#homeLink"); a.hidden=false; a.href=home; }
   try {
     await loadIndex();
     state.liveAvail = await probeLive();

@@ -8,7 +8,7 @@ Switchyard is a three-tier request path (**edge proxy → cache tier → origin 
 
 I built it to understand these mechanisms by watching a system fail without them, so every one of them can be switched off. The lab builds the whole topology on real sockets, replays real Wikipedia traffic through it, injects a failure, and records what every tier did at 100ms resolution. **Every scenario runs twice on identical traffic: once with one mechanism turned off, once with it on.** Each result below is a measured A/B comparison, and the dashboard replays both runs side by side.
 
-**[Open the dashboard](https://mohith26.github.io/switchyard/)** (recorded runs), or run it locally with a *Run live* button:
+**[Open the dashboard](https://mohithgajjela.com/system-02-switchyard)** (recorded runs, also mirrored on [GitHub Pages](https://mohith26.github.io/switchyard/)), or run it locally with a *Run live* button:
 
 ```sh
 go run ./cmd/switchyard lab serve     # http://127.0.0.1:8088
@@ -24,7 +24,7 @@ Recorded on an Apple M5 Pro laptop (darwin/arm64, 18 cores), 30 seconds per vari
 
 #### Consistent hashing: A cache node dies
 
-The ring reassigned 20.1% of keys vs 80.3% for mod-N, cutting extra origin fetches from 7844 to 1949.
+The ring reassigned 20.1% of keys vs 80.3% for mod-N, cutting extra origin fetches from 7,844 to 1,949.
 
 | Metric | mod-N hashing | Consistent-hash ring |
 |---|---:|---:|
@@ -62,7 +62,7 @@ With naive retries the system never recovered after the origin healed (0.0% serv
 
 #### Adaptive concurrency limit: Traffic doubles past capacity
 
-At 2x capacity, goodput was 2232 req/s with the adaptive limit (p99 38ms) vs 37 req/s without, where the p99 was 299ms.
+At 2x capacity, goodput was 2,232 req/s with the adaptive limit (p99 38ms) vs 37 req/s without, where the p99 was 299ms.
 
 | Metric | Queue everything | Adaptive concurrency limit |
 |---|---:|---:|
@@ -150,6 +150,7 @@ go run ./cmd/switchyard lab list                        # the six scenarios
 go run ./cmd/switchyard lab run -scenario retry-storm   # record one (about 1 minute)
 go run ./cmd/switchyard lab serve                       # dashboard: replays plus live runs
 go run ./cmd/switchyard lab export -out docs            # static, replay-only copy of the dashboard
+go run ./cmd/switchyard lab export -single out.html     # the same, as one self-contained file
 ```
 
 **As separate processes**, the way it would be deployed:

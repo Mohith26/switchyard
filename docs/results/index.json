@@ -3,7 +3,7 @@
     "id": "node-failure",
     "title": "A cache node dies",
     "mechanism": "Consistent hashing",
-    "headline": "The ring reassigned 20.1% of keys vs 80.3% for mod-N, cutting extra origin fetches from 7844 to 1949.",
+    "headline": "The ring reassigned 20.1% of keys vs 80.3% for mod-N, cutting extra origin fetches from 7,844 to 1,949.",
     "file": "node-failure.json"
   },
   {
@@ -24,7 +24,7 @@
     "id": "overload",
     "title": "Traffic doubles past capacity",
     "mechanism": "Adaptive concurrency limit",
-    "headline": "At 2x capacity, goodput was 2232 req/s with the adaptive limit (p99 38ms) vs 37 req/s without, where the p99 was 299ms.",
+    "headline": "At 2x capacity, goodput was 2,232 req/s with the adaptive limit (p99 38ms) vs 37 req/s without, where the p99 was 299ms.",
     "file": "overload.json"
   },
   {
