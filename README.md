@@ -1,5 +1,7 @@
 # Switchyard
 
+[![ci](https://github.com/Mohith26/switchyard/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohith26/switchyard/actions/workflows/ci.yml)
+
 An edge gateway in Go, and a lab that shows what each of its parts is for.
 
 Switchyard is a three-tier request path (**edge proxy → cache tier → origin pool**) with the mechanisms real CDNs and API gateways depend on: consistent hashing with bounded loads, request coalescing, stale-while-revalidate, retry budgets, circuit breakers, outlier ejection, adaptive concurrency limits, per-client rate limiting, hot config reload, and zero-downtime restarts by socket handoff. It uses only the Go standard library.
