@@ -1,0 +1,38 @@
+# A full Switchyard topology: 3 origins, 3 cache nodes, 1 edge.
+#   docker compose up --build
+#   curl -i localhost:8080/wiki/Cleopatra          # X-Cache: MISS, then HIT
+#   docker compose run --rm loadgen                 # 30s of real-popularity traffic
+#   docker compose kill -s HUP edge                 # hot-reload deploy/edge.docker.json
+#   curl localhost:8080/-/metrics                   # Prometheus metrics
+x-origin: &origin
+  build: .
+  image: switchyard:local
+x-cache: &cache
+  build: .
+  image: switchyard:local
+  depends_on: [origin-1, origin-2, origin-3]
+
+services:
+  origin-1: { <<: *origin, command: ["origin", "-listen", ":7000", "-name", "origin-1"] }
+  origin-2: { <<: *origin, command: ["origin", "-listen", ":7000", "-name", "origin-2"] }
+  origin-3: { <<: *origin, command: ["origin", "-listen", ":7000", "-name", "origin-3"] }
+  cache-1: { <<: *cache, command: ["cache", "-listen", ":9000", "-name", "cache-1", "-origins", "origin-1:7000,origin-2:7000,origin-3:7000"] }
+  cache-2: { <<: *cache, command: ["cache", "-listen", ":9000", "-name", "cache-2", "-origins", "origin-1:7000,origin-2:7000,origin-3:7000"] }
+  cache-3: { <<: *cache, command: ["cache", "-listen", ":9000", "-name", "cache-3", "-origins", "origin-1:7000,origin-2:7000,origin-3:7000"] }
+  edge:
+    build: .
+    image: switchyard:local
+    depends_on: [cache-1, cache-2, cache-3]
+    command: ["edge", "-config", "/etc/switchyard/edge.json"]
+    volumes: ["./deploy/edge.docker.json:/etc/switchyard/edge.json:ro"]
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/-/healthz"]
+      interval: 2s
+      retries: 15
+  loadgen:
+    build: .
+    image: switchyard:local
+    profiles: ["load"]
+    depends_on: { edge: { condition: service_healthy } }
+    command: ["loadgen", "-target", "http://edge:8080", "-rate", "1500", "-duration", "30s"]

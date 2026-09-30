@@ -1,0 +1,14 @@
+{
+  "name": "edge",
+  "listen": ":8080",
+  "cache_nodes": ["cache-1:9000", "cache-2:9000", "cache-3:9000"],
+  "hashing": "ring",
+  "vnodes": 160,
+  "bounded_load": 1.25,
+  "health_path": "/healthz",
+  "health_interval": "250ms",
+  "failover": true,
+  "request_timeout": "1s",
+  "rate_limit": { "rps": 500, "burst": 250, "header": "X-Client-ID" },
+  "shedding": { "initial": 64, "min": 8, "max": 2000, "window": "100ms" }
+}

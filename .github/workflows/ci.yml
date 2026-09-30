@@ -1,0 +1,41 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - name: vet
+        run: go vet ./...
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: test (race detector)
+        run: go test -race -count=1 ./...
+      - name: benchmarks (smoke)
+        run: go test -run '^$' -bench . -benchtime 2000x ./internal/...
+      - name: lab scenario (shortened)
+        run: go run ./cmd/switchyard lab run -scenario node-failure -time-scale 0.3 -rate-scale 0.5 -out /tmp/results
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: compose up
+        run: docker compose up -d --build --wait edge
+      - name: cache miss then hit through the whole stack
+        run: |
+          curl -fsS -o /dev/null -D - localhost:8080/wiki/Cleopatra | grep -i 'x-cache: MISS'
+          curl -fsS -o /dev/null -D - localhost:8080/wiki/Cleopatra | grep -i 'x-cache: HIT'
+      - name: load
+        run: docker compose run --rm loadgen loadgen -target http://edge:8080 -rate 500 -duration 5s
+      - name: hot reload
+        run: |
+          docker compose kill -s HUP edge
+          sleep 1
+          curl -fsS localhost:8080/-/metrics | grep 'switchyard_edge_reloads_total 1'
+      - name: logs
+        if: always()
+        run: docker compose logs --tail 50
