@@ -1,0 +1,6 @@
+bin/
+/switchyard
+*.test
+*.out
+.DS_Store
+/tmp/
