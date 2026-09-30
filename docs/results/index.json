@@ -1,0 +1,44 @@
+[
+  {
+    "id": "node-failure",
+    "title": "A cache node dies",
+    "mechanism": "Consistent hashing",
+    "headline": "The ring reassigned 20.1% of keys vs 80.3% for mod-N, cutting extra origin fetches from 7844 to 1949.",
+    "file": "node-failure.json"
+  },
+  {
+    "id": "flash-crowd",
+    "title": "One page goes viral",
+    "mechanism": "Request coalescing + stale-while-revalidate",
+    "headline": "Coalescing cut origin renders of the viral page from 187/s to 0.9/s, and hot-page p99 from 190ms to 1ms.",
+    "file": "flash-crowd.json"
+  },
+  {
+    "id": "retry-storm",
+    "title": "The origin slows down",
+    "mechanism": "Retry budget + circuit breaker",
+    "headline": "With naive retries the system never recovered after the origin healed (0.0% served); with a retry budget and breakers it recovered in 0.5s (100.0% served).",
+    "file": "retry-storm.json"
+  },
+  {
+    "id": "overload",
+    "title": "Traffic doubles past capacity",
+    "mechanism": "Adaptive concurrency limit",
+    "headline": "At 2x capacity, goodput was 2232 req/s with the adaptive limit (p99 38ms) vs 37 req/s without, where the p99 was 299ms.",
+    "file": "overload.json"
+  },
+  {
+    "id": "noisy-neighbor",
+    "title": "One client floods the API",
+    "mechanism": "Per-client rate limiting",
+    "headline": "During the flood, well-behaved clients got 100.0% of requests served with per-client limits vs 1.8% without.",
+    "file": "noisy-neighbor.json"
+  },
+  {
+    "id": "deploy",
+    "title": "Five deploys under load",
+    "mechanism": "Graceful restart (socket handoff)",
+    "headline": "Five restarts failed 231 requests with stop-then-start and 0 with the socket handoff.",
+    "file": "deploy.json"
+  }
+]
