@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en" data-mode="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switchyard: an edge gateway, measured</title>
+<meta name="description" content="A Go edge gateway with consistent hashing, request coalescing, retry budgets, circuit breakers, adaptive concurrency limits and zero-downtime restarts, each measured A/B on real traffic.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1117'/%3E%3Cpath d='M6 22h20M6 22c8 0 12-12 20-12' stroke='%2334d399' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090c; --panel:#0e1116; --panel2:#121620; --line:#1c222c; --line2:#262e3a;
+  --text:#e7eaee; --muted:#8b94a3; --faint:#5b6472;
+  --without:#ff7a66; --with:#3ddc97;
+  --hit:#3ddc97; --miss:#f5b83d; --fail:#ff5c6c; --shed:#a58bff; --edge:#6cb6ff;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(1200px 500px at 70% -10%,rgba(61,220,151,.06),transparent 60%),radial-gradient(900px 500px at 0% 0%,rgba(108,182,255,.05),transparent 60%),var(--bg)}
+a{color:inherit}
+.wrap{max-width:1480px;margin:0 auto;padding:28px 32px 64px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:26px}
+.brand{display:flex;gap:14px;align-items:center}
+.mark{width:40px;height:40px;border-radius:10px;background:linear-gradient(145deg,#111823,#0b0f15);border:1px solid var(--line2);display:grid;place-items:center;flex:none}
+.brand h1{font-size:22px;letter-spacing:-.02em;margin:0;font-weight:700}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:13.5px;max-width:620px}
+.meta{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex:none}
+.chip{font:500 12px var(--mono);color:var(--muted);border:1px solid var(--line2);background:var(--panel);padding:6px 10px;border-radius:999px;white-space:nowrap}
+.chip b{color:var(--text);font-weight:500}
+.chip.live{color:#06120c;background:var(--with);border-color:var(--with)}
+.chip.live b{color:#06120c}
+.btn{font:600 12.5px var(--sans);color:var(--text);background:var(--panel2);border:1px solid var(--line2);padding:8px 14px;border-radius:8px;cursor:pointer;transition:border-color .15s,background .15s;text-decoration:none}
+.btn:hover{border-color:#3a4555;background:#161b25}
+.btn.primary{background:var(--with);color:#06120c;border-color:var(--with)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+nav.tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:22px}
+.tab{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;color:var(--text);font-family:var(--sans);transition:border-color .15s,background .15s}
+.tab:hover{border-color:var(--line2);background:#10141b}
+.tab.on{border-color:#2f3a49;background:linear-gradient(180deg,#141a24,#10141b);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.tab .k{font:600 10px/1.45 var(--mono);letter-spacing:.06em;color:var(--faint);text-transform:uppercase;min-height:29px}
+.tab.on .k{color:var(--with)}
+.tab .t{font-size:13.5px;font-weight:600;margin-top:5px;line-height:1.25}
+.intro{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px;margin-bottom:20px;align-items:start}
+.intro h2{font-size:28px;letter-spacing:-.025em;line-height:1.15;margin:0 0 10px;font-weight:700}
+.intro .q{font-size:16px;color:#cfd5dd;line-height:1.5;margin:0}
+.intro .x{font-size:13.5px;color:var(--muted);line-height:1.62;margin:0}
+.intro .traffic{margin-top:12px;font:12px/1.55 var(--mono);color:var(--faint)}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.card{min-width:0;background:linear-gradient(180deg,var(--panel),#0c0f14);border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative}
+.card .hd{display:flex;align-items:center;gap:8px 10px;padding:14px 16px 6px;flex-wrap:wrap}
+.pill{font:700 10.5px var(--mono);letter-spacing:.1em;padding:4px 8px;border-radius:6px}
+.pill.without{color:var(--without);background:rgba(255,122,102,.1);border:1px solid rgba(255,122,102,.28)}
+.pill.with{color:var(--with);background:rgba(61,220,151,.09);border:1px solid rgba(61,220,151,.28)}
+.card .lbl{font-weight:600;font-size:14.5px}
+.settings{display:flex;gap:6px;flex-wrap:wrap;flex-basis:100%}
+.settings span{font:11px var(--mono);color:var(--muted);background:#0a0d12;border:1px solid var(--line);padding:3px 7px;border-radius:5px}
+.viz{position:relative;height:340px}
+.viz canvas.topo{position:absolute;inset:0;width:100%;height:100%}
+.ringbox{position:absolute;left:14px;bottom:10px;width:118px;height:118px;pointer-events:none}
+.ringbox canvas{width:118px;height:118px}
+.ringcap{position:absolute;left:140px;bottom:14px;width:118px;text-align:left;font:500 10.5px/1.5 var(--mono);color:var(--faint)}
+.ringcap b{color:var(--muted);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+.tile{padding:12px 16px 14px;border-right:1px solid var(--line)}
+.tile:last-child{border-right:0}
+.tile .n{font:600 20px var(--mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums;transition:color .2s}
+.tile .u{font:500 11px var(--mono);color:var(--faint);margin-left:3px}
+.tile .l{font-size:11.5px;color:var(--muted);margin-top:3px}
+.tile .n.bad{color:var(--fail)}
+.transport{display:flex;align-items:center;gap:12px;margin:14px 0 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.transport .time{font:600 13px var(--mono);min-width:96px;font-variant-numeric:tabular-nums}
+.transport .evlabel{font:500 12px var(--mono);color:var(--muted);min-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scrub{position:relative;flex:1;height:30px;cursor:pointer;touch-action:none}
+.scrub .bar{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:4px;background:#1a202a}
+.scrub .fill{position:absolute;left:0;top:13px;height:4px;border-radius:4px;background:linear-gradient(90deg,#2b8f68,var(--with))}
+.scrub .head{position:absolute;top:7px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(61,220,151,.22);transform:translateX(-8px)}
+.scrub .ev{position:absolute;top:5px;width:2px;height:20px;background:#3a4454;border-radius:2px;transform:translateX(-1px)}
+.scrub .ev.fault{background:var(--fail)} .scrub .ev.recover{background:var(--with)} .scrub .ev.deploy{background:var(--edge)} .scrub .ev.traffic{background:var(--miss)}
+.speed{display:flex;gap:4px}
+.speed button{font:600 11.5px var(--mono);color:var(--muted);background:transparent;border:1px solid var(--line2);border-radius:6px;padding:5px 8px;cursor:pointer}
+.speed button.on{color:var(--text);border-color:#3a4555;background:#161b25}
+.charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.chart{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px 8px}
+.chart .ct{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.chart .ct span{font-size:12.5px;font-weight:600}
+.chart .ct em{font:11px var(--mono);color:var(--faint);font-style:normal}
+.chart canvas{width:100%;height:170px;display:block}
+.legend{display:flex;gap:18px;margin:12px 2px 0;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.results{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px;margin-top:22px}
+.headline{background:linear-gradient(160deg,#0f1a15,#0d1117 60%);border:1px solid #1d3a2c;border-radius:16px;padding:22px 24px}
+.headline .k{font:600 10.5px var(--mono);letter-spacing:.1em;color:var(--with);text-transform:uppercase}
+.headline p{font-size:19px;line-height:1.45;margin:10px 0 0;letter-spacing:-.01em;font-weight:500}
+.headline .how{margin-top:16px;font:12px/1.65 var(--mono);color:var(--faint)}
+.headline .how code{color:var(--muted)}
+table.sum{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+table.sum th{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:right;padding:12px 16px;border-bottom:1px solid var(--line)}
+table.sum th:first-child,table.sum td:first-child{text-align:left}
+table.sum td{padding:11px 16px;border-bottom:1px solid var(--line);font-size:13px;text-align:right;vertical-align:top}
+table.sum tr:last-child td{border-bottom:0}
+table.sum td.v{font:500 13px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+table.sum td.w{color:var(--without)} table.sum td.g{color:var(--with)}
+table.sum td .note{display:block;font-size:11px;color:var(--faint);margin-top:2px}
+.delta{font:600 11.5px var(--mono);padding:3px 7px;border-radius:5px;background:rgba(61,220,151,.1);color:var(--with);white-space:nowrap}
+.delta.neutral{background:#151a22;color:var(--muted)}
+.delta.worse{background:rgba(255,92,108,.1);color:var(--fail)}
+footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;color:var(--faint);font-size:12.5px;flex-wrap:wrap}
+footer a{color:var(--muted)}
+.empty{padding:80px;text-align:center;color:var(--muted);grid-column:1/-1}
+@media (max-width:1150px){nav.tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.intro,.results{grid-template-columns:1fr}.stage{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark"><svg width="22" height="22" viewBox="0 0 32 32"><path d="M4 23h24M4 23c9 0 13-13 24-13" stroke="#3ddc97" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="4" cy="23" r="2.6" fill="#6cb6ff"/></svg></div>
+      <div>
+        <h1>Switchyard</h1>
+        <p>An edge gateway written in Go, measured. Each scenario runs twice on the same traffic: once with one mechanism off, then with it on.</p>
+      </div>
+    </div>
+    <div class="meta">
+      <span class="chip" id="modeChip">loading</span>
+      <span class="chip" id="hostChip" hidden></span>
+      <a class="btn" href="https://github.com/Mohith26/switchyard" target="_blank" rel="noopener">GitHub</a>
+      <button class="btn primary" id="liveBtn" hidden>Run live</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <section class="intro">
+    <div><h2 id="title"></h2><p class="q" id="question"></p></div>
+    <div><p class="x" id="explain"></p><div class="traffic" id="traffic"></div></div>
+  </section>
+
+  <section class="stage" id="stage"></section>
+
+  <div class="legend">
+    <span><i style="background:var(--hit)"></i>served from cache or succeeded</span>
+    <span><i style="background:var(--miss)"></i>went to the origin</span>
+    <span><i style="background:var(--fail)"></i>will fail (5xx, timeout, refused)</span>
+    <span><i style="background:var(--shed)"></i>rejected fast at the edge</span>
+    <span style="color:var(--faint)">DOWN: process gone · EJECTED: alive, but taken out of rotation by health checks</span>
+  </div>
+
+  <div class="transport">
+    <button class="btn" id="playBtn" style="min-width:70px">Pause</button>
+    <button class="btn" id="restartBtn">Restart</button>
+    <div class="time" id="time">0.0s / 0s</div>
+    <div class="scrub" id="scrub"><div class="bar"></div><div class="fill" id="fill"></div><div id="evs"></div><div class="head" id="head"></div></div>
+    <div class="evlabel" id="evlabel"></div>
+    <div class="speed" id="speed"><button data-s="0.5">0.5x</button><button data-s="1" class="on">1x</button><button data-s="2">2x</button><button data-s="4">4x</button></div>
+  </div>
+
+  <section class="charts" id="charts"></section>
+  <div class="legend">
+    <span><i style="background:var(--without)"></i><span id="lgWithout">without</span></span>
+    <span><i style="background:var(--with)"></i><span id="lgWith">with</span></span>
+    <span style="color:var(--faint)">Dashed verticals are the injected events. Lines are smoothed over 0.5s.</span>
+  </div>
+
+  <section class="results">
+    <div class="headline"><div class="k">Measured result</div><p id="headline"></p><div class="how" id="how"></div></div>
+    <table class="sum" id="summary"></table>
+  </section>
+
+  <footer>
+    <div>Traffic popularity from the <a href="https://dumps.wikimedia.org/other/pageviews/2024/2024-09/" target="_blank" rel="noopener">Wikimedia pageview dumps</a>. Every number on this page was recorded by the lab, not typed in.</div>
+    <div id="footRight"></div>
+  </footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s) => document.querySelector(s);
+const MODE = document.documentElement.dataset.mode;
+const NODE_COLORS = ["#6cb6ff","#b48cff","#ff7ac6","#f5b83d","#3ddc97","#5ee1e6"];
+const COLOR = {hit:"#3ddc97", miss:"#f5b83d", fail:"#ff5c6c", shed:"#a58bff", without:"#ff7a66", with:"#3ddc97"};
+const TICK = 0.1;
+const EDGE_NOTE = {
+  "node-failure":{without:"mod-N placement", with:"ring placement"},
+  "flash-crowd":{without:"ring placement", with:"ring placement"},
+  "retry-storm":{without:"pass-through", with:"pass-through"},
+  "overload":{without:"no admission limit", with:"adaptive limit"},
+  "noisy-neighbor":{without:"no client limits", with:"400 req/s per client"},
+};
+const state = {index:[], cache:{}, cur:null, t:0, playing:true, speed:1, live:false, liveAvail:false, lastFrame:0, parts:{}, es:null};
+
+// ---------- formatting ----------
+const fmtK = (v) => v>=10000 ? fmtN(v/1000,0)+"k" : v>=1000 ? fmtN(v/1000,1)+"k" : fmtN(v);
+const fmtN = (v, d=0) => (v===null||v===undefined||isNaN(v)) ? "–" : Number(v).toLocaleString("en-US",{maximumFractionDigits:d, minimumFractionDigits:d});
+function fmtVal(v, unit){
+  if (unit==="%") return fmtN(v, v%1===0?0:1)+"%";
+  if (unit==="ms") return v<0 ? "none served" : fmtN(v, v<10?1:0)+" ms";
+  if (unit==="s") return v<0 ? "never" : fmtN(v,1)+" s";
+  if (unit==="x") return fmtN(v,2)+"x";
+  if (unit==="req/s") return fmtN(v, v<10&&v%1?1:0)+"/s";
+  return fmtN(v, v%1?1:0);
+}
+function delta(m){
+  const a=m.without, b=m.with;
+  const good = (t)=>`<span class="delta">${t}</span>`, bad=(t)=>`<span class="delta worse">${t}</span>`, same=(t="same")=>`<span class="delta neutral">${t}</span>`;
+  if (!m.better) return same("tradeoff");
+  if (m.unit==="s"){ if (a<0 && b>=0) return good("recovered"); if (b<0 && a>=0) return bad("never recovered"); }
+  if (m.unit==="ms" && (a<0||b<0)){ return a<0 ? good("now served") : bad("none served"); }
+  if (m.unit==="%"){
+    const pts = b-a, g = m.better==="higher" ? pts>0 : pts<0;
+    if (Math.abs(pts)<0.05) return same();
+    const t = `${pts>0?"+":""}${fmtN(pts, Math.abs(pts)<1?2:1)} pts`;
+    return g? good(t) : bad(t);
+  }
+  if (m.better==="lower"){
+    if (b===0 && a>0) return good("to zero");
+    if (b>0 && a/b>=1.05) return good(`${fmtN(a/b, a/b<10?1:0)}x lower`);
+    if (b>0 && b/a>=1.05) return bad(`${fmtN(b/a,1)}x higher`);
+    return same();
+  }
+  if (a===0 && b>0) return good("from zero");
+  if (a>0 && b/a>=1.05) return good(`${fmtN(b/a, b/a<10?1:0)}x higher`);
+  if (a>0 && a/b>=1.05) return bad(`${fmtN(a/b,1)}x lower`);
+  return same();
+}
+
+// ---------- data ----------
+async function loadIndex(){
+  const r = await fetch("results/index.json", {cache:"no-store"});
+  if (!r.ok) throw new Error("No recorded results yet. Run: go run ./cmd/switchyard lab run");
+  state.index = await r.json();
+}
+async function loadResult(id){
+  if (state.cache[id]) return state.cache[id];
+  const e = state.index.find(x=>x.id===id);
+  const j = await (await fetch("results/"+e.file, {cache:"no-store"})).json();
+  state.cache[id] = j;
+  return j;
+}
+async function probeLive(){
+  if (MODE==="static") return false;
+  try { const r = await fetch("api/ping",{cache:"no-store"}); return r.ok && (await r.json()).live===true; } catch { return false; }
+}
+
+// ---------- series helpers ----------
+function tickAt(v, t){ if (!v.ticks.length) return null; const i=Math.max(0,Math.min(v.ticks.length-1, Math.floor(t/TICK))); return v.ticks[i]; }
+function windowAgg(v, t, secs, f){
+  const end=Math.min(v.ticks.length-1, Math.floor(t/TICK)), n=Math.max(1,Math.round(secs/TICK)); let s=0,c=0;
+  for (let i=Math.max(0,end-n+1); i<=end; i++){ s+=f(v.ticks[i]); c++; }
+  return c? s/c : 0;
+}
+const sumQueue = (t)=> t.origins.reduce((a,o)=>a+o.queue,0);
+const ratio = (a,b)=> b>0? a/b : 0;
+const done = (x)=> (x.ok||0)+(x.failed||0)+(x.shed||0)+(x.limited||0);
+
+const CHARTS = {
+  "node-failure":[
+    {t:"Load reaching the origin", u:"req/s", f:x=>x.origin_req*10},
+    {t:"Cache hit ratio", u:"%", f:x=>100*ratio(x.hit+x.stale, x.ok), max:100, empty:100},
+    {t:"p99 latency", u:"ms", f:x=>x.p99},
+  ],
+  "flash-crowd":[
+    {t:"Origin renders of the viral page", u:"req/s", f:x=>x.watch*10},
+    {t:"Viral page requests served", u:"%", f:x=>100*ratio((x.classes.hot||{}).ok, done(x.classes.hot||{})), max:100, empty:100},
+    {t:"Origin queue depth", u:"requests", f:sumQueue},
+  ],
+  "retry-storm":[
+    {t:"Requests served", u:"%", f:x=>100*ratio(x.ok,done(x)), max:100, empty:100},
+    {t:"Load reaching the origin", u:"req/s", f:x=>x.origin_req*10},
+    {t:"Origin queue depth", u:"requests", f:sumQueue},
+  ],
+  "overload":[
+    {t:"Goodput vs offered load", u:"req/s", f:x=>x.ok*10, ref:x=>x.sent*10},
+    {t:"Requests served", u:"%", f:x=>100*ratio(x.ok,done(x)), max:100, empty:100},
+    {t:"Origin queue depth", u:"requests", f:sumQueue},
+  ],
+  "noisy-neighbor":[
+    {t:"Well-behaved requests served", u:"%", f:x=>100*ratio((x.classes.normal||{}).ok, done(x.classes.normal||{})), max:100, empty:100},
+    {t:"Well-behaved p99 latency", u:"ms", f:x=>(x.classes.normal||{}).p99||0},
+    {t:"Load reaching the origin", u:"req/s", f:x=>x.origin_req*10},
+  ],
+  "deploy":[
+    {t:"Failed requests", u:"per second", f:x=>x.failed*10},
+    {t:"Requests served", u:"%", f:x=>100*ratio(x.ok,done(x)), max:100, min:90, empty:100},
+    {t:"p99 latency", u:"ms", f:x=>x.p99},
+  ],
+};
+
+// ---------- text ----------
+function renderTabs(){
+  $("#tabs").innerHTML = state.index.map((e,i)=>`<button class="tab" data-id="${e.id}"><div class="k">0${i+1} · ${e.mechanism}</div><div class="t">${e.title}</div></button>`).join("");
+  document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>select(b.dataset.id));
+}
+function markTab(id){ document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.id===id)); }
+function renderText(r){
+  $("#title").textContent = r.title;
+  $("#question").textContent = r.question;
+  $("#explain").textContent = r.explain;
+  $("#traffic").textContent = "Traffic: " + r.traffic;
+  $("#lgWithout").textContent = "without: " + r.variants[0].label;
+  $("#lgWith").textContent = "with: " + r.variants[1].label;
+  const d = new Date(r.recorded);
+  $("#modeChip").innerHTML = r.live ? "<b>LIVE</b> running on this machine" : `recorded run · <b>${d.toISOString().slice(0,10)}</b>`;
+  $("#modeChip").classList.toggle("live", !!r.live);
+  $("#hostChip").hidden=false; $("#hostChip").innerHTML = `<b>${r.host}</b>`;
+  $("#how").innerHTML = `Reproduce: <code>go run ./cmd/switchyard lab run -scenario ${r.id}</code><br>Topology: ${r.topology.caches} cache nodes, ${r.topology.origins} origins x ${r.topology.origin_workers} workers${r.topology.edge_process?", edge running as a separate OS process":""}. Every hop is a real HTTP connection over loopback.`;
+  $("#footRight").textContent = `${r.id} · ${r.duration}s per variant · 100ms resolution`;
+}
+function renderSummary(r){
+  $("#headline").textContent = r.headline || (r.live ? "Running live on this machine. The comparison table fills in when both variants finish." : "");
+  if (!r.summary || !r.summary.length){ $("#summary").innerHTML = ""; return; }
+  $("#summary").innerHTML = `<tr><th>Metric</th><th>${r.variants[0].label}</th><th>${r.variants[1].label}</th><th>Change</th></tr>` +
+    r.summary.map(m=>`<tr><td>${m.label}${m.note?`<span class="note">${m.note}</span>`:""}</td><td class="v w">${fmtVal(m.without,m.unit)}</td><td class="v g">${fmtVal(m.with,m.unit)}</td><td>${delta(m)}</td></tr>`).join("");
+}
+
+// ---------- topology ----------
+function renderStage(r){
+  $("#stage").innerHTML = r.variants.map(v=>`
+    <div class="card" data-v="${v.key}">
+      <div class="hd"><span class="pill ${v.key}">${v.key.toUpperCase()}</span><span class="lbl">${v.label}</span>
+        <div class="settings">${(v.settings||[]).map(s=>`<span>${s}</span>`).join("")}</div></div>
+      <div class="viz"><canvas class="topo"></canvas>${r.id==="node-failure"?`<div class="ringcap">KEY OWNERSHIP<br>360 keys, colored<br>by owning node<br><b class="moved"></b></div><div class="ringbox"><canvas class="ring" width="236" height="236"></canvas></div>`:""}</div>
+      <div class="tiles">
+        <div class="tile"><div class="n g1">–</div><div class="l">served per second</div></div>
+        <div class="tile"><div class="n g2">–</div><div class="l">p99 latency</div></div>
+        <div class="tile"><div class="n g3">–</div><div class="l">origin load</div></div>
+        <div class="tile"><div class="n g4">–</div><div class="l">failed per second</div></div>
+      </div>
+    </div>`).join("");
+  state.parts = {}; r.variants.forEach(v=>state.parts[v.key]=[]);
+}
+function sizeCanvas(c){
+  const dpr = window.devicePixelRatio||1, w=c.clientWidth, h=c.clientHeight;
+  if (c.width!==Math.round(w*dpr) || c.height!==Math.round(h*dpr)){ c.width=Math.round(w*dpr); c.height=Math.round(h*dpr); }
+  const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); return [g,w,h];
+}
+const BOX = {client:58, edge:136, cache:122, origin:136};
+function layout(w,h,r){
+  const nC=r.topology.caches, nO=r.topology.origins, ring = r.id==="node-failure";
+  const top=34, bot=h-(ring?16:20), m=14;
+  const gap = (w - 2*m - BOX.client - BOX.edge - BOX.cache - BOX.origin)/3;
+  const x0 = m + BOX.client/2, x1 = x0 + BOX.client/2 + gap + BOX.edge/2, x2 = x1 + BOX.edge/2 + gap + BOX.cache/2, x3 = x2 + BOX.cache/2 + gap + BOX.origin/2;
+  const midY = ring ? top + (bot-top)*0.36 : (top+bot)/2;
+  const caches=[...Array(nC)].map((_,i)=>({x:x2, y: top + (bot-top)*(i+0.5)/nC, w:BOX.cache}));
+  const origins=[...Array(nO)].map((_,i)=>({x:x3, y: top + (bot-top)*(i+0.5)/nO, w:BOX.origin}));
+  return {client:{x:x0,y:midY,w:BOX.client}, edge:{x:x1,y:midY,w:BOX.edge}, caches, origins, top, bot};
+}
+const R_ = (a)=>({x:a.x+a.w/2, y:a.y}), L_ = (a)=>({x:a.x-a.w/2, y:a.y});
+function rr(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+function bez(a,b,t){ const mx=(a.x+b.x)/2, u=1-t; return {x:u*u*u*a.x+3*u*u*t*mx+3*u*t*t*mx+t*t*t*b.x, y:u*u*u*a.y+3*u*u*t*a.y+3*u*t*t*b.y+t*t*t*b.y}; }
+function link(g,a,b,alpha){ const mx=(a.x+b.x)/2; g.strokeStyle=`rgba(120,135,160,${alpha})`; g.lineWidth=1; g.beginPath(); g.moveTo(a.x,a.y); g.bezierCurveTo(mx,a.y,mx,b.y,b.x,b.y); g.stroke(); }
+function box(g,x,y,w,h,fill,stroke){ rr(g,x-w/2,y-h/2,w,h,9); g.fillStyle=fill; g.fill(); g.strokeStyle=stroke; g.lineWidth=1; g.stroke(); }
+function pickWeighted(ws){ let s=0; for (const w of ws) s+=w; if (s<=0) return Math.floor(Math.random()*ws.length); let r=Math.random()*s; for (let i=0;i<ws.length;i++){ r-=ws[i]; if (r<=0) return i; } return ws.length-1; }
+
+// Particles are spawned from the recorded rates at the playhead, and each one
+// takes a route in proportion to what really happened in that 100ms tick.
+function spawn(r, v, dt){
+  const tk = tickAt(v, state.t); if (!tk) return;
+  const P = state.parts[v.key];
+  const n = tk.sent*10*0.12*dt;
+  const whole = Math.floor(n) + (Math.random() < n%1 ? 1 : 0);
+  const fin = Math.max(1, done(tk));
+  const pFail = tk.failed/fin, pShed = (tk.shed+tk.limited)/fin;
+  const cacheable = r.id==="node-failure"||r.id==="flash-crowd"||r.id==="deploy";
+  const pOrigin = cacheable ? Math.min(1, tk.origin_req/Math.max(1,tk.ok+tk.failed)) : 1;
+  const nodeW = tk.nodes.map(x=>x.up && !x.out ? x.req+0.01 : 0), origW = tk.origins.map(o=>o.req+0.01);
+  for (let i=0;i<whole && P.length<1600;i++){
+    const u=Math.random(); let kind="ok";
+    if (u<pShed) kind="shed"; else if (u<pShed+pFail) kind="fail";
+    P.push({k:kind, node:pickWeighted(nodeW), orig:pickWeighted(origW), toOrigin: kind!=="shed" && Math.random()<pOrigin, s:0, j:(Math.random()-0.5)*7});
+  }
+}
+
+function drawTopo(r, v, card, dt){
+  const c = card.querySelector("canvas.topo"); const [g,w,h]=sizeCanvas(c);
+  g.clearRect(0,0,w,h);
+  const L = layout(w,h,r), tk = tickAt(v, state.t);
+  link(g,R_(L.client),L_(L.edge),.35);
+  L.caches.forEach(cn=>link(g,R_(L.edge),L_(cn),.2));
+  L.caches.forEach(cn=>L.origins.forEach(o=>link(g,R_(cn),L_(o),.07)));
+  g.fillStyle="#4d5563"; g.font="600 10px 'JetBrains Mono', monospace"; g.textAlign="center";
+  g.fillText("CLIENTS",L.client.x,16); g.fillText("EDGE",L.edge.x,16); g.fillText("CACHE TIER",L.caches[0].x,16); g.fillText("ORIGIN POOL",L.origins[0].x,16);
+  // particles
+  const P = state.parts[v.key];
+  g.globalCompositeOperation="lighter";
+  for (let i=P.length-1;i>=0;i--){
+    const p=P[i]; p.s += dt*2.0; // legs per second: a full trip takes ~1.5s of recorded time
+    const cn = L.caches[p.node]||L.caches[0], og=L.origins[p.orig]||L.origins[0];
+    let pos, col, a=0.95; const s=p.s;
+    if (p.k==="shed"){
+      if (s<1){ pos=bez(R_(L.client),L_(L.edge),s); col="#d7dde5"; a=.55; }
+      else if (s<1.7){ const q=(s-1)/0.7, e=L_(L.edge); pos={x:e.x-36*q, y:e.y+p.j*5*q}; col=COLOR.shed; a=1-q*0.8; }
+      else { P.splice(i,1); continue; }
+    } else if (p.k==="fail"){
+      const stop = r.id==="deploy" ? 1 : (p.toOrigin?3:2);
+      if (s<stop){
+        if (s<1){ pos=bez(R_(L.client),L_(L.edge),s); col="#aeb8c6"; a=.4; }
+        else if (s<2){ pos=bez(R_(L.edge),L_(cn),s-1); col=COLOR.fail; a=.8; }
+        else { pos=bez(R_(cn),L_(og),s-2); col=COLOR.fail; a=.8; }
+      } else if (s<stop+0.9){
+        const base = stop===1?L_(L.edge):stop===2?L_(cn):L_(og), q=(s-stop)/0.9, ang=p.j*0.9;
+        pos={x:base.x-Math.cos(ang)*q*34, y:base.y+Math.sin(ang)*q*34}; col=COLOR.fail; a=1-q*q;
+      } else { P.splice(i,1); continue; }
+    } else {
+      if (s<1){ pos=bez(R_(L.client),L_(L.edge),s); col="#8f9bb0"; a=.22; }
+      else if (s<2){ pos=bez(R_(L.edge),L_(cn),s-1); col = p.toOrigin? COLOR.miss : COLOR.hit; }
+      else if (p.toOrigin && s<3){ pos=bez(R_(cn),L_(og),s-2); col=COLOR.miss; }
+      else { P.splice(i,1); continue; }
+    }
+    const jy = s<1 ? p.j*2.4*Math.sin(Math.PI*s) : (p.k==="fail"&&s>=1?0:p.j*Math.sin(Math.PI*Math.min(1,s%1)));
+    g.fillStyle=col; g.globalAlpha=Math.max(0,a); g.beginPath(); g.arc(pos.x, pos.y+jy, col===COLOR.fail?2.8:2.3, 0, Math.PI*2); g.fill();
+  }
+  g.globalAlpha=1; g.globalCompositeOperation="source-over";
+  if (!tk) return;
+  // clients
+  box(g, L.client.x, L.client.y, BOX.client, 50, "#0f141b", "#2a3340");
+  g.fillStyle="#cfd5dd"; g.font="600 11.5px 'JetBrains Mono', monospace"; g.textAlign="center"; g.fillText(fmtN(tk.sent*10),L.client.x,L.client.y+1);
+  g.fillStyle="#5b6472"; g.font="10px 'JetBrains Mono', monospace"; g.fillText("req/s",L.client.x,L.client.y+15);
+  // edge
+  const ew=BOX.edge, eh=74, failEdge = r.id==="deploy" && (tk.conn_err+tk.timeout)>0;
+  box(g, L.edge.x, L.edge.y, ew, eh, "#0f1621", failEdge?"#8a2a36":"#2b4a6b");
+  g.fillStyle="#6cb6ff"; g.font="700 12.5px Inter, sans-serif"; g.fillText("switchyard",L.edge.x,L.edge.y-17);
+  g.font="10.5px 'JetBrains Mono', monospace"; g.fillStyle="#8b94a3";
+  const rej = tk.shed+tk.limited;
+  if (tk.gens){ const ks=Object.keys(tk.gens).sort(); g.fillText(ks.length>1?"two PIDs serving":`pid ${ks[0]}`,L.edge.x,L.edge.y+1); }
+  else if (tk.limit) g.fillText(`limit: ${tk.limit} in flight`,L.edge.x,L.edge.y+1);
+  else g.fillText(EDGE_NOTE[r.id] ? EDGE_NOTE[r.id][v.key] : "proxy",L.edge.x,L.edge.y+1);
+  if (failEdge){ g.fillStyle="#ff5c6c"; g.fillText(`${fmtN((tk.conn_err+tk.timeout)*10)}/s refused`, L.edge.x, L.edge.y+17); }
+  else { g.fillStyle = rej? "#a58bff" : "#4d5563"; g.fillText(rej? `${fmtN(rej*10)}/s rejected` : "0 rejected", L.edge.x, L.edge.y+17); }
+  // caches
+  const ch = Math.min(52, (L.bot-L.top)/L.caches.length-8), cw=BOX.cache;
+  L.caches.forEach((cn,i)=>{
+    const nt = tk.nodes[i]||{req:0,up:true,entries:0};
+    const dim = !nt.up || nt.out;
+    box(g, cn.x, cn.y, cw, ch, !nt.up?"#1b0d11":nt.out?"#15120b":"#0f141b", !nt.up?"#7a2632":nt.out?"#6b5320":"#2a3340");
+    g.fillStyle=NODE_COLORS[i%NODE_COLORS.length]; g.globalAlpha=nt.up?1:.35; g.beginPath(); g.arc(cn.x-cw/2+11, cn.y-ch/2+12, 3.5,0,Math.PI*2); g.fill(); g.globalAlpha=1;
+    g.textAlign="left"; g.fillStyle=nt.up?"#cfd5dd":"#ff5c6c"; g.font="600 11px 'JetBrains Mono', monospace"; g.fillText(`cache-${i+1}`, cn.x-cw/2+20, cn.y-ch/2+16);
+    g.textAlign="right"; g.fillStyle=!nt.up?"#ff5c6c":nt.out?"#f5b83d":"#8b94a3"; g.font="10.5px 'JetBrains Mono', monospace"; g.fillText(!nt.up? "DOWN" : nt.out ? "EJECTED" : fmtK(nt.req*10)+"/s", cn.x+cw/2-8, cn.y-ch/2+16);
+    if (ch>36){ const fr=Math.min(1,(nt.entries||0)/2400); g.fillStyle="#1a212b"; g.fillRect(cn.x-cw/2+10, cn.y+ch/2-12, cw-20, 4); g.fillStyle=nt.up?"#2f7f5f":"#4a1d24"; g.fillRect(cn.x-cw/2+10, cn.y+ch/2-12, (cw-20)*fr, 4); }
+  });
+  // origins
+  const oh = Math.min(82,(L.bot-L.top)/L.origins.length-12), ow=BOX.origin, W=r.topology.origin_workers||16;
+  L.origins.forEach((o,i)=>{
+    const ot = tk.origins[i]||{req:0,queue:0,busy:0,up:true,open_by:0};
+    box(g, o.x, o.y, ow, oh, "#0f141b", ot.queue>200?"#7a5a22":"#2a3340");
+    g.textAlign="left"; g.fillStyle="#cfd5dd"; g.font="600 11px 'JetBrains Mono', monospace"; g.fillText(`origin-${i+1}`, o.x-ow/2+10, o.y-oh/2+16);
+    g.textAlign="right"; g.fillStyle="#8b94a3"; g.font="10.5px 'JetBrains Mono', monospace"; g.fillText(fmtK(ot.req*10)+"/s", o.x+ow/2-8, o.y-oh/2+16);
+    for (let k=0;k<W;k++){ const cx=o.x-ow/2+10+(k%8)*14.6, cy=o.y-oh/2+25+Math.floor(k/8)*8; g.fillStyle = k<ot.busy? "#f5b83d":"#222a35"; g.fillRect(cx,cy,10,5); }
+    const qf = Math.min(1, ot.queue/2048);
+    g.textAlign="left"; g.fillStyle="#5b6472"; g.font="9.5px 'JetBrains Mono', monospace"; g.fillText(`queue ${fmtN(ot.queue)}`, o.x-ow/2+10, o.y+oh/2-15);
+    g.fillStyle="#1a212b"; g.fillRect(o.x-ow/2+10, o.y+oh/2-11, ow-20, 4);
+    g.fillStyle= qf>0.5? "#ff5c6c" : "#f5b83d"; g.fillRect(o.x-ow/2+10, o.y+oh/2-11, (ow-20)*qf, 4);
+    if (ot.open_by>0){ g.textAlign="right"; g.fillStyle="#a58bff"; g.font="700 9.5px 'JetBrains Mono', monospace"; g.fillText(`OPEN x${ot.open_by}`, o.x+ow/2-8, o.y+oh/2-15); }
+  });
+  g.textAlign="left";
+}
+
+function drawRing(r, v, card){
+  const c = card.querySelector("canvas.ring"); if (!c || !v.extra) return;
+  const ex = v.extra, g=c.getContext("2d"), W=c.width, cx=W/2, cy=W/2, R=W/2-18;
+  g.clearRect(0,0,W,W);
+  const kill = (r.events.find(e=>e.kind==="fault")||{t:1e9}).t, after = state.t>=kill, since = state.t-kill;
+  g.strokeStyle="#1c222c"; g.lineWidth=2; g.beginPath(); g.arc(cx,cy,R-18,0,Math.PI*2); g.stroke();
+  for (const k of ex.keys){
+    const own = after? k.after : k.before, mv = k.before!==k.after, a=(k.pos-90)*Math.PI/180;
+    const flash = after && mv && since<1.2;
+    g.strokeStyle = flash ? "#ffffff" : NODE_COLORS[own%NODE_COLORS.length];
+    g.globalAlpha = after && !mv ? 0.45 : 0.95;
+    g.lineWidth = flash? 3.4 : 2.6;
+    const r0 = R-12, r1 = R + (after&&mv ? 10 : 0);
+    g.beginPath(); g.moveTo(cx+Math.cos(a)*r0, cy+Math.sin(a)*r0); g.lineTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1); g.stroke();
+  }
+  g.globalAlpha=1; g.textAlign="center"; g.textBaseline="middle";
+  if (after){
+    g.fillStyle="#e7eaee"; g.font="700 34px 'JetBrains Mono', monospace"; g.fillText(`${fmtN(100*ex.moved,0)}%`, cx, cy-6);
+    g.fillStyle="#8b94a3"; g.font="600 15px 'JetBrains Mono', monospace"; g.fillText("moved", cx, cy+24);
+  } else { g.fillStyle="#5b6472"; g.font="600 15px 'JetBrains Mono', monospace"; g.fillText("all 5 up", cx, cy); }
+  g.textBaseline="alphabetic";
+  const cap = card.querySelector(".moved"); if (cap) cap.textContent = after ? `${fmtN(100*ex.moved,1)}% reassigned` : "before the crash";
+}
+
+function updateTiles(r, v, card){
+  const q=(sel,val,bad)=>{ const el=card.querySelector(sel); el.innerHTML=val; el.classList.toggle("bad",!!bad); };
+  const ok = windowAgg(v,state.t,1,x=>x.ok*10), fail=windowAgg(v,state.t,1,x=>x.failed*10);
+  const p99 = windowAgg(v,state.t,0.5,x=>x.p99), org=windowAgg(v,state.t,1,x=>x.origin_req*10);
+  q(".g1", fmtN(ok)+`<span class="u">/s</span>`);
+  q(".g2", (ok<1?"–":fmtN(p99, p99<10?1:0))+`<span class="u">ms</span>`, p99>300);
+  q(".g3", fmtN(org)+`<span class="u">/s</span>`);
+  q(".g4", fmtN(fail)+`<span class="u">/s</span>`, fail>=1);
+}
+
+// ---------- charts ----------
+function renderCharts(r){
+  const defs = CHARTS[r.id]||[];
+  $("#charts").innerHTML = defs.map((d,i)=>`<div class="chart"><div class="ct"><span>${d.t}</span><em>${d.u}</em></div><canvas data-i="${i}"></canvas></div>`).join("");
+}
+function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(Math.max(raw,1e-9)))); const f=raw/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
+function smooth(vals, n){ const out=[]; let s=0; const q=[]; for (const v of vals){ q.push(v); s+=v; if (q.length>n) s-=q.shift(); out.push(s/q.length);} return out; }
+function series(v, f, emptyVal){
+  return v.ticks.map(t=>{ if (emptyVal!==undefined && done(t)===0 && t.sent===0) return emptyVal; return f(t); });
+}
+function drawCharts(r){
+  const defs = CHARTS[r.id]||[];
+  document.querySelectorAll("#charts canvas").forEach(c=>{
+    const d = defs[+c.dataset.i]; const [g,w,h]=sizeCanvas(c); g.clearRect(0,0,w,h);
+    const pad={l:42,r:10,t:8,b:20}, W=w-pad.l-pad.r, H=h-pad.t-pad.b, T=r.duration;
+    const ss = r.variants.map(v=>smooth(series(v,d.f,d.empty),5));
+    const refs = d.ref ? r.variants.slice(0,1).map(v=>smooth(v.ticks.map(d.ref),5)) : [];
+    const mn = d.min||0;
+    const step = niceStep(((d.max||Math.max(1,...ss.flat(),...refs.flat())*1.08)-mn)/4);
+    const mx = d.max || mn + step*Math.ceil((Math.max(1,...ss.flat(),...refs.flat())*1.08-mn)/step);
+    const X=t=>pad.l+W*t/T, Y=v=>pad.t+H*(1-(Math.min(mx,Math.max(mn,v))-mn)/(mx-mn));
+    g.strokeStyle="#161c25"; g.lineWidth=1; g.fillStyle="#5b6472"; g.font="10px 'JetBrains Mono', monospace"; g.textAlign="right";
+    for (let v=mn; v<=mx+1e-9; v+=step){ const y=Y(v); g.beginPath(); g.moveTo(pad.l,y); g.lineTo(w-pad.r,y); g.stroke(); g.fillText(v>=1000? fmtN(v/1000, v%1000?1:0)+"k" : fmtN(v, v%1?1:0), pad.l-6, y+3); }
+    g.textAlign="center"; for (let s=0;s<=T;s+=5) g.fillText(s+"s", X(s), h-5);
+    for (const e of r.events){ g.strokeStyle= e.kind==="fault"?"rgba(255,92,108,.5)":e.kind==="recover"?"rgba(61,220,151,.4)":e.kind==="deploy"?"rgba(108,182,255,.45)":"rgba(245,184,61,.45)"; g.setLineDash([3,3]); g.beginPath(); g.moveTo(X(e.t),pad.t); g.lineTo(X(e.t),pad.t+H); g.stroke(); g.setLineDash([]); }
+    refs.forEach(sr=>{ g.strokeStyle="rgba(200,210,225,.35)"; g.setLineDash([4,3]); g.lineWidth=1.2; g.beginPath(); sr.forEach((v,i)=>{ const x=X(i*TICK), y=Y(v); i?g.lineTo(x,y):g.moveTo(x,y); }); g.stroke(); g.setLineDash([]);
+      g.fillStyle="rgba(200,210,225,.55)"; g.textAlign="left"; g.fillText("offered", X(T*0.62), Y(Math.max(...sr))-5); });
+    const upto = Math.floor(state.t/TICK);
+    ss.forEach((s,vi)=>{
+      const col = vi===0?COLOR.without:COLOR.with;
+      g.lineWidth=1.3; g.strokeStyle=col+"40"; g.beginPath(); s.forEach((v,i)=>{ const x=X(i*TICK), y=Y(v); i?g.lineTo(x,y):g.moveTo(x,y); }); g.stroke();
+      g.lineWidth=2; g.strokeStyle=col; g.beginPath(); s.slice(0,upto+1).forEach((v,i)=>{ const x=X(i*TICK), y=Y(v); i?g.lineTo(x,y):g.moveTo(x,y); }); g.stroke();
+      const k=Math.min(upto,s.length-1); if (k>=0){ g.fillStyle=col; g.beginPath(); g.arc(X(k*TICK),Y(s[k]),3,0,Math.PI*2); g.fill(); }
+    });
+    g.strokeStyle="rgba(255,255,255,.3)"; g.beginPath(); g.moveTo(X(state.t),pad.t); g.lineTo(X(state.t),pad.t+H); g.stroke();
+  });
+}
+
+// ---------- transport ----------
+function renderTransport(r){
+  $("#evs").innerHTML = r.events.map(e=>`<div class="ev ${e.kind}" style="left:${100*e.t/r.duration}%" title="${e.t}s: ${e.label}"></div>`).join("");
+}
+function updateTransport(r){
+  const f=Math.min(1,state.t/r.duration);
+  $("#fill").style.width=(100*f)+"%"; $("#head").style.left=(100*f)+"%";
+  $("#time").textContent = `${state.t.toFixed(1)}s / ${r.duration}s`;
+  const ev = [...r.events].reverse().find(e=>e.t<=state.t);
+  $("#evlabel").textContent = ev ? `${ev.t}s · ${ev.label}` : (r.events[0] ? `next: ${r.events[0].t}s · ${r.events[0].label}` : "");
+}
+function clearParts(){ for (const k in state.parts) state.parts[k].length=0; }
+function seek(ev){ const r=state.cur; if(!r||state.live) return; const b=$("#scrub").getBoundingClientRect(); state.t=Math.max(0,Math.min(r.duration,(ev.clientX-b.left)/b.width*r.duration)); clearParts(); }
+$("#scrub").addEventListener("pointerdown",e=>{ seek(e); const mv=ev=>seek(ev); window.addEventListener("pointermove",mv); window.addEventListener("pointerup",()=>window.removeEventListener("pointermove",mv),{once:true}); });
+$("#playBtn").onclick=()=>{ state.playing=!state.playing; $("#playBtn").textContent=state.playing?"Pause":"Play"; };
+$("#restartBtn").onclick=()=>{ if (state.live) return; state.t=0; clearParts(); state.playing=true; $("#playBtn").textContent="Pause"; };
+document.querySelectorAll("#speed button").forEach(b=>b.onclick=()=>{ state.speed=+b.dataset.s; document.querySelectorAll("#speed button").forEach(x=>x.classList.toggle("on",x===b)); });
+document.addEventListener("keydown",e=>{ if (e.code==="Space" && e.target===document.body){ e.preventDefault(); $("#playBtn").click(); } });
+
+function frame(ts){
+  const r = state.cur;
+  const dtReal = state.lastFrame? Math.min(0.05,(ts-state.lastFrame)/1000) : 0; state.lastFrame=ts;
+  if (r && r.variants.length && r.variants.every(v=>v.ticks && v.ticks.length)){
+    if (state.live){ state.t = Math.max(0, Math.min(...r.variants.map(v=>v.ticks.length))*TICK - TICK); }
+    else if (state.playing){ state.t += dtReal*state.speed; if (state.t>r.duration){ state.t=0; clearParts(); } }
+    const moving = state.playing||state.live, dt = moving ? dtReal*(state.live?1:state.speed) : 0;
+    document.querySelectorAll(".card").forEach(card=>{
+      const v = r.variants.find(x=>x.key===card.dataset.v); if (!v) return;
+      if (moving) spawn(r,v,dt);
+      drawTopo(r,v,card,dt); drawRing(r,v,card); updateTiles(r,v,card);
+    });
+    drawCharts(r); updateTransport(r);
+  }
+  requestAnimationFrame(frame);
+}
+
+async function select(id){
+  if (state.es){ state.es.close(); state.es=null; state.live=false; }
+  markTab(id);
+  const r = await loadResult(id);
+  state.cur = r; state.t=0;
+  renderText(r); renderStage(r); renderCharts(r); renderTransport(r); renderSummary(r);
+  history.replaceState(null,"","#"+id);
+  $("#liveBtn").hidden = !state.liveAvail; $("#liveBtn").disabled=false; $("#liveBtn").textContent="Run live";
+}
+function runLive(){
+  const id = state.cur.id;
+  $("#liveBtn").disabled=true; $("#liveBtn").textContent="Running both variants…";
+  const es = new EventSource("api/live?scenario="+encodeURIComponent(id)); state.es=es;
+  es.addEventListener("meta", e=>{ const m=JSON.parse(e.data); m.variants.forEach(v=>v.ticks=[]); m.summary=[]; state.cur=m; state.live=true; state.t=0;
+    renderText(m); renderStage(m); renderCharts(m); renderTransport(m); renderSummary(m); });
+  es.addEventListener("tick", e=>{ const {variant,tick}=JSON.parse(e.data); const v=state.cur.variants.find(x=>x.key===variant); if (v) v.ticks.push(tick); });
+  es.addEventListener("done", e=>{ const r=JSON.parse(e.data); es.close(); state.es=null; state.live=false; state.cur=r; renderText(r); renderSummary(r); state.t=0; clearParts();
+    $("#liveBtn").disabled=false; $("#liveBtn").textContent="Run live again"; });
+  es.addEventListener("error", e=>{ if (e.data){ try{ alert("Live run failed: "+JSON.parse(e.data).error); }catch{} } es.close(); state.es=null; state.live=false; $("#liveBtn").disabled=false; $("#liveBtn").textContent="Run live"; });
+}
+$("#liveBtn").onclick=runLive;
+window.addEventListener("hashchange", ()=>{ const id=location.hash.slice(1); if (state.index.some(e=>e.id===id) && (!state.cur || state.cur.id!==id)) select(id); });
+
+(async ()=>{
+  try {
+    await loadIndex();
+    state.liveAvail = await probeLive();
+    renderTabs();
+    const want = location.hash.slice(1);
+    await select(state.index.some(e=>e.id===want)? want : state.index[0].id);
+    requestAnimationFrame(frame);
+  } catch (err){
+    $("#stage").innerHTML = `<div class="empty">${err.message}</div>`;
+    $("#modeChip").textContent = "no data";
+  }
+})();
+})();
+</script>
+</body>
+</html>
